@@ -1,5 +1,7 @@
-import { RequestSender } from '@/entrypoints/content/RequestSender';
-import { BinanceLoader, BybitLoader, OkxLoader } from '@/entrypoints/content/loaders';
+import { RequestSender } from './RequestSender';
+import { BinanceLoader, BybitLoader, OkxLoader } from './loaders';
+import { renderEarnData } from './renderEarnData';
+import './styles.css';
 
 export async function main() {
     const requestSender = new RequestSender();
@@ -10,23 +12,40 @@ export async function main() {
 
     try {
         await binanceLoader.loadEarnData();
-        console.error(binanceLoader.getCoinApr('ena'));
-        console.error(binanceLoader.getCoinApr('lista'));
-    } catch (error) {
-        console.error(error);
-    }
-
-    try {
         await bybitLoader.loadEarnData();
-        console.error(bybitLoader.getCoinApr('ena'));
+        await okxLoader.loadEarnData();
     } catch (error) {
         console.error(error);
     }
 
-    try {
-        await okxLoader.loadEarnData();
-        console.error(okxLoader.getCoinApr('ena'));
-    } catch (error) {
-        console.error(error);
+    onTableReady((tableEl) => {
+        renderEarnData({ tableEl, binanceLoader, bybitLoader, okxLoader });
+    });
+}
+
+function onTableReady(callback: (el: HTMLTableElement) => void) {
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((record) => {
+            record.addedNodes.forEach((node) => {
+                if (node.nodeType !== 1) {
+                    return;
+                }
+
+                const el: HTMLElement = node as HTMLElement;
+                const tableEl = el.querySelector<HTMLTableElement>('.portfolio-tablelist-wrapper .cmc-table');
+
+                if (tableEl) {
+                    callback(tableEl);
+                }
+            });
+        });
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    const tableEl = document.querySelector<HTMLTableElement>('.portfolio-tablelist-wrapper .cmc-table');
+
+    if (tableEl) {
+        callback(tableEl);
     }
 }

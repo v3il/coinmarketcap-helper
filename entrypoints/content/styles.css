@@ -1,0 +1,24 @@
+.cmc-table .name:not(.symbol-name),
+.cmc-table .hide-ranking-number > p {
+    display: none !important;
+}
+
+.coin-ad-banner {
+    display: none !important;
+}
+
+.ch-earn {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+}
+
+.ch-earn:not(:last-child) {
+    margin-bottom: 4px;
+}
+
+.ch-earn__logo {
+    width: 16px;
+    height: 16px;
+}
