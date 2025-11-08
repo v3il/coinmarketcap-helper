@@ -24,6 +24,7 @@
     "eslint-config-airbnb": "^19.0.4",
     "typescript": "^5.9.2",
     "vite-plugin-eslint": "^1.8.1",
-    "wxt": "^0.20.6"
+    "wxt": "^0.20.6",
+    "release-it": "^19.0.3"
   }
 }

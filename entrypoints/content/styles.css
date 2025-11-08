@@ -1,24 +1,19 @@
-.cmc-table .name:not(.symbol-name),
-.cmc-table .hide-ranking-number > p {
-    display: none !important;
-}
-
-.coin-ad-banner {
-    display: none !important;
-}
-
-.ch-earn {
+.cmc-helper-earn {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 4px;
+    gap: 8px;
+
+    &:not(:last-child) {
+        margin-bottom: 4px;
+    }
+
+    img {
+        width: 16px;
+        height: 16px;
+    }
 }
 
-.ch-earn:not(:last-child) {
-    margin-bottom: 4px;
-}
-
-.ch-earn__logo {
-    width: 16px;
-    height: 16px;
+.cmc-helper-earn--max {
+    color: #16c784;
 }

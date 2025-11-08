@@ -1,4 +1,10 @@
 import { BinanceLoader, BybitLoader, OkxLoader } from './loaders';
+import { Exchange, getExchangeLogoId } from './enums';
+
+type EarnData = {
+    exchange: Exchange;
+    apr: number;
+}
 
 interface IOptions {
     tableEl: HTMLTableElement;
@@ -7,59 +13,84 @@ interface IOptions {
     okxLoader: OkxLoader;
 }
 
-enum Logo {
-    BINANCE = '3',
-    BYBIT = '13',
-    OKX = '4'
-}
-
 export async function renderEarnData({ tableEl, okxLoader, bybitLoader, binanceLoader }: IOptions) {
+    const isOverviewTable = tableEl.querySelector('.symbol-name');
+
     const colgroup = tableEl.querySelector('colgroup')!;
     colgroup.appendChild(document.createElement('col'));
 
     const headRowEl = tableEl.querySelector('thead tr')!;
-    headRowEl!.appendChild(createTh());
+
+    if (isOverviewTable) {
+        headRowEl.appendChild(createTh());
+    } else {
+        const lastThEl = headRowEl.querySelector<HTMLElement>('th:last-child');
+        lastThEl!.insertAdjacentElement('beforebegin', createTh());
+    }
 
     const rowEls = tableEl.querySelectorAll('tbody tr');
 
     rowEls.forEach((row) => {
-        const coinSymbol = row.querySelector('.symbol-name, .coin-item-symbol')!.textContent.toLowerCase();
-        const td = document.createElement('td');
+        const coinSymbolEl = row.querySelector('.symbol-name, .coin-item-symbol')!;
+        const coinSymbol = coinSymbolEl.textContent.toLowerCase();
 
-        const binanceEarn = binanceLoader.getCoinApr(coinSymbol);
-        const bybitEarn = bybitLoader.getCoinApr(coinSymbol);
-        const okxEarn = okxLoader.getCoinApr(coinSymbol);
+        const earnData: EarnData[] = [
+            { exchange: Exchange.BINANCE, apr: binanceLoader.getCoinApr(coinSymbol) },
+            { exchange: Exchange.BYBIT, apr: bybitLoader.getCoinApr(coinSymbol) },
+            { exchange: Exchange.OKX, apr: okxLoader.getCoinApr(coinSymbol) }
+        ];
 
-        if (binanceEarn > 0) {
-            td.appendChild(createEarnEl(Logo.BINANCE, binanceEarn));
+        const td = createTd(earnData);
+
+        if (isOverviewTable) {
+            row.appendChild(td);
+        } else {
+            const lastTdEl = row.querySelector('td:last-child');
+            lastTdEl!.insertAdjacentElement('beforebegin', td);
         }
-
-        if (bybitEarn > 0) {
-            td.appendChild(createEarnEl(Logo.BYBIT, bybitEarn));
-        }
-
-        if (okxEarn > 0) {
-            td.appendChild(createEarnEl(Logo.OKX, okxEarn));
-        }
-
-        row.appendChild(td);
     });
 }
 
 function createTh() {
     const th = document.createElement('th');
     th.textContent = 'Earn';
+    th.style.textAlign = 'right';
     return th;
 }
 
-function createEarnEl(image: string, earnValue: number) {
+function createTd(earnData: EarnData[]): HTMLTableCellElement {
+    const td = document.createElement('td');
+    const maxAprExchanges = getMaxAprExchanges(earnData);
+
+    earnData.forEach((data) => {
+        if (data.apr > 0) {
+            const el = createEarnEl(data);
+
+            if (maxAprExchanges.includes(data.exchange)) {
+                el.classList.add('cmc-helper-earn--max');
+            }
+
+            td.insertAdjacentElement('beforeend', el);
+        }
+    });
+
+    return td;
+}
+
+function createEarnEl({ exchange, apr }: EarnData): Element {
     const div = document.createElement('div');
 
-    div.classList.add('ch-earn');
     div.innerHTML = `
-        <img src="https://s2.coinmarketcap.com/static/img/earn-provider/64x64/${image}.png" class="ch-earn__logo">
-        ${earnValue.toFixed(2)}%
+        <div class="cmc-helper-earn">
+            <img src="https://s2.coinmarketcap.com/static/img/earn-provider/64x64/${getExchangeLogoId(exchange)}.png">
+            ${apr.toFixed(2)}%
+        </div>
     `;
 
-    return div;
+    return div.firstElementChild!;
+}
+
+function getMaxAprExchanges(data: EarnData[]): Exchange[] {
+    const maxApr = Math.max(...data.map(({ apr }) => apr));
+    return data.filter(({ apr }) => apr === maxApr).map(({ exchange }) => exchange);
 }

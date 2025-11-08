@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/release-it/schema/release-it.json",
+
+  "github": {
+    "release": true,
+    "releaseName" : "cmc-helper@v${version}",
+    "assets": [".output/cmc-helper@v${version}.zip"],
+    "releaseNotes": ""
+  },
+
+  "hooks": {
+    "before:release": "npm run zip && echo Releasing version ${version}"
+  },
+
+  "npm": {
+    "skipVersion": true
+  },
+
+  "git": {
+    "requireCleanWorkingDir": false
+  }
+}

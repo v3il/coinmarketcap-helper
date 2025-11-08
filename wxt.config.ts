@@ -5,7 +5,6 @@ export default defineConfig({
     manifest: {
         description: 'coinmarketcap-helper',
         name: 'coinmarketcap-helper',
-        permissions: ['storage'],
         host_permissions: [
             'https://coinmarketcap.com/*',
             'https://www.binance.com/*',
