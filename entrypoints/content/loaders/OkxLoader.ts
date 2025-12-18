@@ -18,7 +18,12 @@ export class OkxLoader extends BasicLoader {
             const { data } = response.data!;
 
             data.forEach((item) => {
-                this.store.set(item.ccy.toLowerCase(), this.parseEstimateApr(item.estRate));
+                this.store.set(item.ccy.toLowerCase(), [
+                    {
+                        value: this.parseEstimateApr(item.estRate),
+                        duration: '0'
+                    }
+                ]);
             });
         } catch (error) {
             console.error('OkxLoader failed to load earn data', error);
@@ -29,12 +34,3 @@ export class OkxLoader extends BasicLoader {
         return Number.parseFloat(apr) * 100;
     }
 }
-
-// {
-//     "avgAmt": "",
-//     "avgAmtUsd": "",
-//     "avgRate": "0.01",
-//     "ccy": "BTC",
-//     "estRate": "0.01",
-//     "preRate": "0.01"
-// }

@@ -1,7 +1,8 @@
-import { BasicLoader } from './BasicLoader';
+import { BasicLoader, IEarnEntry } from './BasicLoader';
 
 interface IProductDetails {
     apy: string;
+    duration: string;
     productType: string;
 }
 
@@ -39,10 +40,21 @@ export class BinanceLoader extends BasicLoader {
             }
 
             list.forEach((item) => {
-                const flexibleItem = item.productDetailList.find((detail) => detail.productType === 'LENDING_FLEXIBLE');
+                const entries: IEarnEntry[] = [];
 
-                if (flexibleItem) {
-                    this.store.set(item.asset.toLowerCase(), this.parseEstimateApr(flexibleItem.apy));
+                item.productDetailList.forEach((detail) => {
+                    if (!['POS_FIXED', 'LENDING_FLEXIBLE'].includes(detail.productType) || +detail.duration > 60) {
+                        return;
+                    }
+
+                    entries.push({
+                        value: this.parseEstimateApr(detail.apy),
+                        duration: detail.duration
+                    });
+                });
+
+                if (entries.length > 0) {
+                    this.store.set(item.asset.toLowerCase(), entries);
                 }
             });
         } catch (error) {
