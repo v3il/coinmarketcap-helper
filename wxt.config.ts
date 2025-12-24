@@ -13,7 +13,8 @@ export default defineConfig({
             'https://coinmarketcap.com/*',
             'https://www.binance.com/*',
             'https://api.bybit.com/*',
-            'https://www.okx.com/*'
+            'https://www.okx.com/*',
+            'https://www.mexc.com/*'
         ]
     }
 });

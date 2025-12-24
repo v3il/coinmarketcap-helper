@@ -1,4 +1,4 @@
-import { BinanceLoader, BybitLoader, IEarnEntry, OkxLoader } from './loaders';
+import {BinanceLoader, BybitLoader, IEarnEntry, MexcLoader, OkxLoader} from './loaders';
 import { Exchange, getExchangeLogoId } from './enums';
 
 type EarnData = {
@@ -10,10 +10,11 @@ interface IOptions {
     tableEl: HTMLTableElement;
     binanceLoader: BinanceLoader;
     bybitLoader: BybitLoader;
+    mexcLoader: MexcLoader;
     okxLoader: OkxLoader;
 }
 
-export async function renderEarnData({ tableEl, okxLoader, bybitLoader, binanceLoader }: IOptions) {
+export async function renderEarnData({ tableEl, okxLoader, bybitLoader, binanceLoader, mexcLoader }: IOptions) {
     const isOverviewTable = tableEl.querySelector('.symbol-name');
 
     const colgroup = tableEl.querySelector('colgroup')!;
@@ -37,7 +38,8 @@ export async function renderEarnData({ tableEl, okxLoader, bybitLoader, binanceL
         const earnData: EarnData[] = [
             { exchange: Exchange.BINANCE, aprs: binanceLoader.getCoinApr(coinSymbol) },
             { exchange: Exchange.BYBIT, aprs: bybitLoader.getCoinApr(coinSymbol) },
-            { exchange: Exchange.OKX, aprs: okxLoader.getCoinApr(coinSymbol) }
+            { exchange: Exchange.OKX, aprs: okxLoader.getCoinApr(coinSymbol) },
+            { exchange: Exchange.MEXC, aprs: mexcLoader.getCoinApr(coinSymbol) }
         ];
 
         const td = createTd(earnData);
