@@ -35,3 +35,9 @@
 .cmc-helper-earn--max .cmc-helper-earn__tip--infinite {
     background: #3861FB;
 }
+
+div:has(> div > div[id^="google_ads_iframe"]), /* Ads */
+.cmc-sponsor, /* Ads */
+[cmc-ui-portal]:has(.c-biw__mainContent) { /* AI floating */
+    display: none !important;
+}
