@@ -1,4 +1,4 @@
-import {BinanceLoader, BybitLoader, IEarnEntry, MexcLoader, OkxLoader} from './loaders';
+import { BinanceLoader, BybitLoader, IEarnEntry, MexcLoader, OkxLoader } from './loaders';
 import { Exchange, getExchangeLogoId } from './enums';
 
 type EarnData = {
@@ -64,6 +64,8 @@ function createTd(earnData: EarnData[]): HTMLTableCellElement {
     const td = document.createElement('td');
     const maxAprExchanges = getMaxAprExchanges(earnData);
 
+    console.error(earnData, maxAprExchanges);
+
     earnData.forEach((data) => {
         if (data.aprs.length > 0) {
             const el = createEarnEl(data);
@@ -103,7 +105,10 @@ function createEarnEl({ exchange, aprs }: EarnData): Element {
 function getMaxAprExchanges(data: EarnData[]): Exchange[] {
     const flexiEarns = data.flatMap((d) => d.aprs.filter((apr) => apr.duration === '0'));
     const maxApr = Math.max(...flexiEarns.map((e) => e.value));
+
+    console.error(flexiEarns, maxApr);
+
     return data
-        .filter(({ aprs }) => aprs.map((apr) => apr.value).includes(maxApr))
+        .filter(({ aprs }) => aprs.filter((apr) => apr.duration === '0' && apr.value === maxApr).length)
         .map(({ exchange }) => exchange);
 }
