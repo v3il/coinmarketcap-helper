@@ -17,7 +17,7 @@ interface Chat {
 
 async function call<T>(token: string, method: string, body: object = {}): Promise<T> {
     if (!token) {
-        throw new Error('Не вказано токен бота');
+        throw new Error('Bot token is missing');
     }
 
     const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
@@ -41,7 +41,7 @@ export const escapeHtml = (text: string) => text
 
 export async function sendMessage(token: string, chatId: string, html: string) {
     if (!chatId) {
-        throw new Error('Не вказано chat id');
+        throw new Error('Chat id is missing');
     }
 
     await call(token, 'sendMessage', {

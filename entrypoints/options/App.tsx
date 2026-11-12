@@ -8,7 +8,7 @@ import { findLatestChat, sendMessage } from '@/lib/telegram';
 
 type Notice = { kind: 'ok' | 'error'; text: string } | null;
 
-const formatTime = (ms: number) => new Date(ms).toLocaleString('uk-UA');
+const formatTime = (ms: number) => new Date(ms).toLocaleString();
 
 export function App() {
     const [form, setForm] = useState<Settings>(DEFAULT_SETTINGS);
@@ -70,7 +70,7 @@ export function App() {
         event.preventDefault();
         run(async () => {
             await save();
-            return 'Збережено';
+            return 'Saved';
         });
     };
 
@@ -78,16 +78,16 @@ export function App() {
         const chat = await findLatestChat(form.botToken.trim());
 
         if (!chat) {
-            throw new Error('Повідомлень боту не знайдено. Напиши йому /start і спробуй ще раз.');
+            throw new Error('No messages to the bot found. Send it /start and try again.');
         }
 
         update('chatId', chat.id);
-        return `Знайдено чат «${chat.name}». Не забудь зберегти.`;
+        return `Found chat “${chat.name}”. Don't forget to save.`;
     });
 
     const onTest = () => run(async () => {
-        await sendMessage(form.botToken.trim(), form.chatId.trim(), '✅ CMC Helper підключено');
-        return 'Тестове повідомлення надіслано';
+        await sendMessage(form.botToken.trim(), form.chatId.trim(), '✅ CMC Helper is connected');
+        return 'Test message sent';
     });
 
     const onCheckNow = () => run(async () => {
@@ -98,7 +98,7 @@ export function App() {
             throw new Error(status.message);
         }
 
-        return `Перевірено. ${status.message}`;
+        return `Checked. ${status.message}`;
     });
 
     return (
@@ -106,15 +106,15 @@ export function App() {
             <h1>CMC Helper</h1>
 
             <section>
-                <h2>Сповіщення в Telegram</h2>
+                <h2>Telegram alerts</h2>
                 <p class="hint">
-                    Розширення раз на кілька годин перевіряє ставки для монет з твого портфоліо і пише,
-                    коли найкраща ставка по монеті зросла.
+                    Every few hours the extension checks rates for the coins in your portfolio and messages you
+                    when the best rate for a coin goes up.
                 </p>
 
                 <form onSubmit={onSave}>
                     <label>
-                        <span>Токен бота</span>
+                        <span>Bot token</span>
                         <input
                             type="password"
                             autoComplete="off"
@@ -124,7 +124,7 @@ export function App() {
                             onInput={(e) => update('botToken', e.currentTarget.value)}
                         />
                         <small>
-                            Створи бота в @BotFather. Токен зберігається лише локально в цьому браузері.
+                            Create a bot with @BotFather. The token is stored only locally in this browser.
                         </small>
                     </label>
 
@@ -136,15 +136,15 @@ export function App() {
                                 onInput={(e) => update('chatId', e.currentTarget.value)}
                             />
                             <button type="button" disabled={busy || !form.botToken} onClick={onFindChat}>
-                                Знайти
+                                Find
                             </button>
                         </div>
-                        <small>Напиши боту /start, потім натисни «Знайти».</small>
+                        <small>Send /start to your bot, then press “Find”.</small>
                     </label>
 
                     <div class="row">
                         <label>
-                            <span>Мінімальний приріст, п.п.</span>
+                            <span>Minimum increase, pp</span>
                             <input
                                 type="number"
                                 min="0.1"
@@ -155,7 +155,7 @@ export function App() {
                         </label>
 
                         <label>
-                            <span>Перевіряти кожні, год</span>
+                            <span>Check every, hours</span>
                             <input
                                 type="number"
                                 min="1"
@@ -168,11 +168,11 @@ export function App() {
                     </div>
 
                     <div class="actions">
-                        <button type="submit" class="primary" disabled={busy || !dirty}>Зберегти</button>
+                        <button type="submit" class="primary" disabled={busy || !dirty}>Save</button>
                         <button type="button" disabled={busy || !form.botToken || !form.chatId} onClick={onTest}>
-                            Тестове повідомлення
+                            Send test message
                         </button>
-                        <button type="button" disabled={busy} onClick={onCheckNow}>Перевірити зараз</button>
+                        <button type="button" disabled={busy} onClick={onCheckNow}>Check now</button>
                     </div>
 
                     {notice && <p class={`notice notice--${notice.kind}`}>{notice.text}</p>}
@@ -180,24 +180,24 @@ export function App() {
             </section>
 
             <section>
-                <h2>Остання перевірка</h2>
+                <h2>Last check</h2>
                 {lastCheck ? (
                     <p class={lastCheck.ok ? '' : 'error'}>
                         {`${formatTime(lastCheck.at)}: ${lastCheck.message}`}
                         {lastCheck.failedExchanges.length > 0
-                            && ` (не відповіли: ${lastCheck.failedExchanges.join(', ')})`}
+                            && ` (no response: ${lastCheck.failedExchanges.join(', ')})`}
                     </p>
                 ) : (
-                    <p class="hint">Ще не було.</p>
+                    <p class="hint">Not yet.</p>
                 )}
             </section>
 
             <section>
-                <h2>{`Монети (${symbols.length})`}</h2>
+                <h2>{`Coins (${symbols.length})`}</h2>
                 {symbols.length > 0 ? (
                     <p class="symbols">{symbols.map((symbol) => symbol.toUpperCase()).join(', ')}</p>
                 ) : (
-                    <p class="hint">Відкрий портфоліо на CoinMarketCap — монети підтягнуться звідти.</p>
+                    <p class="hint">Open your portfolio on CoinMarketCap — the coins are picked up from there.</p>
                 )}
             </section>
         </main>
