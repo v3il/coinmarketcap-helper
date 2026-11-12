@@ -24,10 +24,10 @@ const describe = ({ apr, days, exchangeName }: BestRate) => (
 );
 
 const formatAlerts = (alerts: Alert[]) => [
-    '📈 <b>Нові найкращі ставки</b>',
+    '📈 <b>New best rates</b>',
     '',
     ...alerts.map(({ symbol, best, previous }) => (
-        `<b>${escapeHtml(symbol.toUpperCase())}</b>: ${describe(best)}\n<i>було ${describe(previous)}</i>`
+        `<b>${escapeHtml(symbol.toUpperCase())}</b>: ${describe(best)}\n<i>was ${describe(previous)}</i>`
     ))
 ].join('\n');
 
@@ -35,13 +35,13 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
     const settings = await settingsItem.getValue();
 
     if (!settings.botToken || !settings.chatId) {
-        return { ok: false, message: 'Telegram не налаштовано', failedExchanges: [] };
+        return { ok: false, message: 'Telegram is not configured', failedExchanges: [] };
     }
 
     const symbols = await getPortfolioSymbols();
 
     if (symbols.length === 0) {
-        const message = 'Список монет порожній — відкрий портфоліо на CoinMarketCap';
+        const message = 'No coins yet — open your portfolio on CoinMarketCap';
         return { ok: false, message, failedExchanges: [] };
     }
 
@@ -49,7 +49,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
     const failedExchanges = failed.map((exchange) => exchange.name);
 
     if (failed.length === EXCHANGES.length) {
-        return { ok: false, message: 'Жодна біржа не відповіла', failedExchanges };
+        return { ok: false, message: 'No exchange responded', failedExchanges };
     }
 
     const previous = await knownRatesItem.getValue();
@@ -89,7 +89,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
         }
     });
 
-    let message = `Монет: ${symbols.length}, сповіщень: ${alerts.length}`;
+    let message = `Coins: ${symbols.length}, alerts: ${alerts.length}`;
     let ok = true;
 
     if (alerts.length > 0) {
@@ -101,7 +101,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
                 next[symbol] = previous[symbol];
             });
             ok = false;
-            message = `Не вдалося надіслати в Telegram: ${(error as Error).message}`;
+            message = `Failed to send to Telegram: ${(error as Error).message}`;
         }
     }
 

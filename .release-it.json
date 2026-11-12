@@ -4,7 +4,7 @@
   "github": {
     "release": true,
     "releaseName" : "cmc-helper@v${version}",
-    "assets": [".output/cmc-helper@v${version}.zip"],
+    "assets": [".output/coinmarketcap-helper@v${version}.zip"],
     "releaseNotes": ""
   },
 
@@ -13,10 +13,11 @@
   },
 
   "npm": {
-    "skipVersion": true
+    "publish": false
   },
 
   "git": {
+    "tagName": "v${version}",
     "requireCleanWorkingDir": false
   }
 }

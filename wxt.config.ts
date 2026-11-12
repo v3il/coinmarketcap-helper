@@ -16,7 +16,7 @@ export default defineConfig({
         name: 'coinmarketcap-helper',
         // Clicking the toolbar icon opens the settings page (see background.ts).
         action: {
-            default_title: 'CMC Helper — налаштування'
+            default_title: 'CMC Helper settings'
         },
         permissions: ['storage', 'alarms'],
         host_permissions: [
