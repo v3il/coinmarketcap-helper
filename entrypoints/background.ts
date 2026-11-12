@@ -1,29 +1,50 @@
-import { FETCH_MESSAGE, type FetchRequest, type FetchResponse } from '@/utils/request';
+import { CHECK_NOW_MESSAGE, PORTFOLIO_MESSAGE, type PortfolioMessage } from '@/lib/messages';
+import { checkRates } from '@/lib/notifier';
+import { rememberPortfolioSymbols } from '@/lib/portfolio';
+import { settingsItem } from '@/lib/storage';
+import { FETCH_MESSAGE, fetchDirect, type FetchRequest } from '@/utils/request';
 
-async function proxyFetch({ url, init }: FetchRequest): Promise<FetchResponse> {
-    try {
-        const response = await fetch(url, init);
+const CHECK_ALARM = 'check-rates';
 
-        if (!response.ok) {
-            return { ok: false, error: `HTTP ${response.status} ${response.statusText} for ${url}` };
-        }
+async function scheduleCheck() {
+    const { intervalHours } = await settingsItem.getValue();
+    const periodInMinutes = Math.max(1, intervalHours) * 60;
+    const existing = await chrome.alarms.get(CHECK_ALARM);
 
-        return { ok: true, data: await response.json() };
-    } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
-        return { ok: false, error: `${reason} (${url})` };
+    if (existing?.periodInMinutes !== periodInMinutes) {
+        await chrome.alarms.create(CHECK_ALARM, { delayInMinutes: 1, periodInMinutes });
     }
 }
 
 export default defineBackground(() => {
-    chrome.runtime.onMessage.addListener((message: FetchRequest, _sender, sendResponse) => {
-        if (message?.type !== FETCH_MESSAGE) {
+    chrome.runtime.onMessage.addListener((message: { type?: string }, _sender, sendResponse) => {
+        if (message?.type === FETCH_MESSAGE) {
+            const { url, init } = message as FetchRequest;
+            fetchDirect(url, init).then(sendResponse);
+            return true; // async response
+        }
+
+        if (message?.type === CHECK_NOW_MESSAGE) {
+            checkRates().then(sendResponse);
+            return true;
+        }
+
+        if (message?.type === PORTFOLIO_MESSAGE) {
+            rememberPortfolioSymbols((message as PortfolioMessage).symbols);
             return false;
         }
 
-        proxyFetch(message).then(sendResponse);
-
-        // Keep the message channel open for the async response.
-        return true;
+        return false;
     });
+
+    chrome.alarms.onAlarm.addListener((alarm) => {
+        if (alarm.name === CHECK_ALARM) {
+            checkRates();
+        }
+    });
+
+    chrome.action.onClicked.addListener(() => chrome.runtime.openOptionsPage());
+
+    settingsItem.watch(() => scheduleCheck());
+    scheduleCheck();
 });

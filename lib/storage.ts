@@ -1,0 +1,48 @@
+import { storage } from 'wxt/utils/storage';
+
+// Everything lives in storage.local: it stays on this machine and is readable only by the extension.
+
+export interface Settings {
+    botToken: string;
+    chatId: string;
+    /** Notify when a coin's best APR grows by at least this many percentage points. */
+    minIncrease: number;
+    intervalHours: number;
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+    botToken: '',
+    chatId: '',
+    minIncrease: 1,
+    intervalHours: 4
+};
+
+export interface BestRate {
+    apr: number;
+    days: number;
+    exchangeId: string;
+    exchangeName: string;
+}
+
+export interface CheckStatus {
+    at: number;
+    ok: boolean;
+    message: string;
+    failedExchanges: string[];
+}
+
+export const settingsItem = storage.defineItem<Settings>('local:settings', { fallback: DEFAULT_SETTINGS });
+
+/** Lower-case coin symbol -> when it was last seen in the CMC portfolio (ms). */
+export const portfolioItem = storage.defineItem<Record<string, number>>('local:portfolio', { fallback: {} });
+
+/** Exchange id -> the best rate that exchange offered for a coin. */
+export type CoinSnapshot = Record<string, BestRate>;
+
+/**
+ * Lower-case coin symbol -> per-exchange best rates at the previous check; the baseline for "new best rate".
+ * Kept per exchange so an exchange that's temporarily down can carry its last known rate.
+ */
+export const knownRatesItem = storage.defineItem<Record<string, CoinSnapshot>>('local:knownRates', { fallback: {} });
+
+export const lastCheckItem = storage.defineItem<CheckStatus | null>('local:lastCheck', { fallback: null });

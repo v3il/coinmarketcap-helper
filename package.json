@@ -13,18 +13,22 @@
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
     "postinstall": "wxt prepare",
-    "lint": "eslint . --ext .ts,.js",
-    "lint:fix": "eslint . --ext .ts,.js --fix"
+    "lint": "eslint . --ext .ts,.tsx,.js",
+    "lint:fix": "eslint . --ext .ts,.tsx,.js --fix"
   },
   "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
     "@types/chrome": "^0.1.27",
     "@typescript-eslint/eslint-plugin": "^8.46.3",
     "@typescript-eslint/parser": "^8.46.3",
     "eslint": "^8.57.1",
     "eslint-config-airbnb": "^19.0.4",
+    "release-it": "^19.0.3",
     "typescript": "^5.9.2",
     "vite-plugin-eslint": "^1.8.1",
-    "wxt": "^0.20.6",
-    "release-it": "^19.0.3"
+    "wxt": "^0.20.6"
+  },
+  "dependencies": {
+    "preact": "^10.29.8"
   }
 }

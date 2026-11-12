@@ -1,6 +1,6 @@
+import type { Rate } from '@/lib/exchanges';
+import { flexibleApr, type ExchangeRates, type RatesByCoin } from '@/lib/rates';
 import { h } from './dom';
-import type { Rate } from './exchanges';
-import { flexibleApr, type ExchangeRates, type RatesByCoin } from './rates';
 
 const TABLE_SELECTOR = '.portfolio-tablelist-wrapper .cmc-table';
 // Overview table uses .symbol-name; per-portfolio table uses .coin-item-symbol.
@@ -14,6 +14,21 @@ const CELL_CLASS = 'cmc-helper-earn-cell';
 type Place = (parent: Element, child: Element) => void;
 
 export const hasPortfolioTable = () => document.querySelector(TABLE_SELECTOR) !== null;
+
+/** Lower-case symbols of all coins currently shown in portfolio tables. */
+export function getPortfolioTableSymbols(): string[] {
+    const symbols = new Set<string>();
+
+    document.querySelectorAll(`${TABLE_SELECTOR} tbody ${SYMBOL_SELECTOR}`).forEach((el) => {
+        const symbol = el.textContent?.trim().toLowerCase();
+
+        if (symbol) {
+            symbols.add(symbol);
+        }
+    });
+
+    return [...symbols].sort();
+}
 
 /**
  * Adds the Earn column to every portfolio table on the page. Idempotent: safe to call
