@@ -34,8 +34,20 @@ module.exports = {
     overrides: [
         {
             // tsc already checks undefined identifiers, and no-undef doesn't understand TS-only globals like DOM types.
-            files: ['*.ts'],
+            files: ['*.ts', '*.tsx'],
             rules: { 'no-undef': 'off' }
+        },
+        {
+            // Preact (automatic JSX runtime, `class` attribute), not React; airbnb's React rules assume React.
+            files: ['*.tsx'],
+            rules: {
+                'react/react-in-jsx-scope': 'off',
+                'react/jsx-filename-extension': ['error', { extensions: ['.tsx'] }],
+                'react/no-unknown-property': 'off',
+                'react/jsx-indent': ['error', 4],
+                'react/jsx-indent-props': ['error', 4],
+                'jsx-a11y/label-has-associated-control': ['error', { assert: 'either', depth: 3 }]
+            }
         }
     ],
 

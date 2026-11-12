@@ -51,6 +51,20 @@ npm run build    # production build into .output/chrome-mv3
 npm run lint && npm run compile
 ```
 
-Each exchange is a small module in `entrypoints/content/exchanges/` that exports an `Exchange`
+Each exchange is a small module in `lib/exchanges/` that exports an `Exchange`
 (`id`, `name`, `logoUrl`, `loadRates()` → `Map<symbol, APR %>`). To add one, create a module and list it in
-`entrypoints/content/exchanges/index.ts`, and add the API host to `host_permissions` in `wxt.config.ts`.
+`lib/exchanges/index.ts`, and add the API host to `host_permissions` in `wxt.config.ts`.
+
+---
+
+## 🔔 Telegram alerts
+
+The extension can check rates in the background (while Chrome is running) and message you in Telegram
+when the best rate for a coin in your portfolio grows.
+
+1. Create a bot with [@BotFather](https://t.me/BotFather) and copy its token.
+2. Click the extension icon → paste the token, send `/start` to your bot, then press **Знайти** to fill in the chat id.
+3. Press **Тестове повідомлення** to check, then **Зберегти**.
+4. Open your portfolio on CoinMarketCap once, so the extension learns which coins to watch.
+
+The token is stored only in this browser's local extension storage.
