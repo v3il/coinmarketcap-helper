@@ -14,7 +14,8 @@ export default defineConfig({
             'https://www.binance.com/*',
             'https://api.bybit.com/*',
             'https://www.okx.com/*',
-            'https://www.mexc.com/*'
+            'https://www.mexc.com/*',
+            'https://internal.whitebit.com/*'
         ]
     }
 });

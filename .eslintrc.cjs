@@ -31,6 +31,14 @@ module.exports = {
         injectScript: 'readonly'
     },
 
+    overrides: [
+        {
+            // tsc already checks undefined identifiers, and no-undef doesn't understand TS-only globals like DOM types.
+            files: ['*.ts'],
+            rules: { 'no-undef': 'off' }
+        }
+    ],
+
     rules: {
         'no-alert': 'off',
         'no-console': 'off',
