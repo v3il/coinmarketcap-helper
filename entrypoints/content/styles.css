@@ -36,6 +36,10 @@
     background: #3861FB;
 }
 
+.cmc-helper-earn__tip--best-fixed {
+    background: #16c784;
+}
+
 div:has(> div > div[id^="google_ads_iframe"]), /* Ads */
 .cmc-sponsor, /* Ads */
 [cmc-ui-portal] .popover-base:has([data-scope="base-item-wrapper"]) { /* AI floating */
