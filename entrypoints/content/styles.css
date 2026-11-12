@@ -38,6 +38,9 @@
 
 .cmc-helper-earn__tip--best-fixed {
     background: #16c784;
+    /* Dark text: white on this green is only ~2:1 contrast. */
+    color: #0d1421;
+    font-weight: 600;
 }
 
 div:has(> div > div[id^="google_ads_iframe"]), /* Ads */
