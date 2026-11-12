@@ -1,28 +1,40 @@
-import { RequestSender } from './RequestSender';
-import { BinanceLoader, BybitLoader, OkxLoader, MexcLoader } from './loaders';
-import { renderEarnData } from './renderEarnData';
-import { onTableReady } from './onTableReady';
-
+import { EXCHANGES } from './exchanges';
+import { loadRates, type RatesByCoin } from './rates';
+import { hasPortfolioTable, renderEarnColumn } from './render';
 import './styles.css';
 
-export async function main() {
-    const requestSender = new RequestSender();
+const isPortfolioPage = () => window.location.pathname.startsWith('/portfolio-tracker');
 
-    const binanceLoader = new BinanceLoader({ requestSender });
-    const bybitLoader = new BybitLoader({ requestSender });
-    const okxLoader = new OkxLoader({ requestSender });
-    const mexcLoader = new MexcLoader({ requestSender });
+export function main() {
+    // CoinMarketCap is an SPA, so the script runs on every page and loads rates lazily,
+    // the first time a portfolio table shows up (or right away on a direct portfolio visit).
+    let rates: Promise<RatesByCoin> | undefined = isPortfolioPage() ? loadRates(EXCHANGES) : undefined;
+    let scheduled = false;
 
-    try {
-        await binanceLoader.loadEarnData();
-        await bybitLoader.loadEarnData();
-        await okxLoader.loadEarnData();
-        await mexcLoader.loadEarnData();
-    } catch (error) {
-        console.error(error);
-    }
+    const update = async () => {
+        scheduled = false;
 
-    onTableReady((tableEl) => {
-        renderEarnData({ tableEl, binanceLoader, bybitLoader, okxLoader, mexcLoader });
+        if (!hasPortfolioTable()) {
+            return;
+        }
+
+        rates ??= loadRates(EXCHANGES);
+        renderEarnColumn(await rates);
+    };
+
+    const scheduleUpdate = () => {
+        if (!scheduled) {
+            scheduled = true;
+            requestAnimationFrame(update);
+        }
+    };
+
+    // Our own insertions also trigger the observer; renderEarnColumn is idempotent, so that's a no-op.
+    new MutationObserver(scheduleUpdate).observe(document.documentElement, {
+        childList: true,
+        characterData: true,
+        subtree: true
     });
+
+    scheduleUpdate();
 }
