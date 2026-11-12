@@ -76,6 +76,10 @@ function createCell(symbol: string, exchangeRates: ExchangeRates[]) {
     // Highlight the exchange(s) with the best flexible rate; fixed terms aren't comparable.
     const bestFlexible = Math.max(0, ...exchangeRates.map(({ rates }) => flexibleApr(rates)));
     const isBest = (rates: Rate[]) => bestFlexible > 0 && flexibleApr(rates) === bestFlexible;
+    // Separately, highlight the best fixed-term rate(s) across exchanges.
+    const bestFixed = Math.max(0, ...exchangeRates.flatMap(({ rates }) => rates)
+        .filter((rate) => rate.days > 0)
+        .map((rate) => rate.apr));
 
     return h(
         'td',
@@ -83,18 +87,21 @@ function createCell(symbol: string, exchangeRates: ExchangeRates[]) {
         ...exchangeRates.map(({ exchange, rates }) => h(
             'div',
             { class: isBest(rates) ? 'cmc-helper-earn cmc-helper-earn--max' : 'cmc-helper-earn', title: exchange.name },
-            h('div', { class: 'cmc-helper-earn__content' }, ...rates.map(createTip)),
+            h('div', { class: 'cmc-helper-earn__content' }, ...rates.map((rate) => createTip(rate, bestFixed))),
             h('img', { src: exchange.logoUrl, alt: exchange.name })
         ))
     );
 }
 
-function createTip({ apr, days }: Rate) {
+function createTip({ apr, days }: Rate, bestFixed: number) {
     const flexible = days === 0;
+    const classes = ['cmc-helper-earn__tip'];
 
-    return h(
-        'span',
-        { class: flexible ? 'cmc-helper-earn__tip cmc-helper-earn__tip--infinite' : 'cmc-helper-earn__tip' },
-        `${flexible ? '∞' : `${days}d`}: ${apr.toFixed(2)}%`
-    );
+    if (flexible) {
+        classes.push('cmc-helper-earn__tip--infinite');
+    } else if (apr === bestFixed) {
+        classes.push('cmc-helper-earn__tip--best-fixed');
+    }
+
+    return h('span', { class: classes.join(' ') }, `${flexible ? '∞' : `${days}d`}: ${apr.toFixed(2)}%`);
 }
