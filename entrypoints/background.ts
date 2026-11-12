@@ -5,6 +5,7 @@ interface IRequestParams {
 
 const sendRequest = async (message: IRequestParams) => {
     const { url, requestInit } = message;
+    console.error(requestInit);
     const response = await fetch(url, requestInit);
 
     if (!response.ok) {

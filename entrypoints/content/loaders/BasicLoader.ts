@@ -4,16 +4,21 @@ interface IOptions {
     requestSender: RequestSender;
 }
 
+export interface IEarnEntry {
+    duration: string;
+    value: number;
+}
+
 export abstract class BasicLoader {
     protected readonly requestSender: RequestSender;
-    protected store: Map<string, number> = new Map<string, number>();
+    protected store = new Map<string, IEarnEntry[]>();
 
     constructor({ requestSender }: IOptions) {
         this.requestSender = requestSender;
     }
 
-    getCoinApr(coin: string): number {
-        return this.store.get(coin.toLowerCase()) ?? 0;
+    getCoinApr(coin: string): IEarnEntry[] {
+        return this.store.get(coin.toLowerCase()) ?? [];
     }
 
     abstract loadEarnData(): Promise<void>;

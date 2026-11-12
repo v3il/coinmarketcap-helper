@@ -4,6 +4,7 @@ const URL = 'https://api.bybit.com/v5/earn/product?category=FlexibleSaving';
 
 interface IEarnItem {
     coin: string;
+    term: number;
     estimateApr: string;
 }
 
@@ -20,7 +21,12 @@ export class BybitLoader extends BasicLoader {
             const { list } = response.data!.result;
 
             list.forEach((item) => {
-                this.store.set(item.coin.toLowerCase(), this.parseEstimateApr(item.estimateApr));
+                this.store.set(item.coin.toLowerCase(), [
+                    {
+                        value: this.parseEstimateApr(item.estimateApr),
+                        duration: String(item.term)
+                    }
+                ]);
             });
         } catch (error) {
             console.error('BybitLoader failed to load earn data', error);
@@ -31,31 +37,3 @@ export class BybitLoader extends BasicLoader {
         return Number.parseFloat(apr.replace('%', ''));
     }
 }
-
-// {
-//     "category": "FlexibleSaving",
-//     "estimateApr": "100%",
-//     "coin": "EAT",
-//     "minStakeAmount": "1500",
-//     "maxStakeAmount": "4000",
-//     "precision": "8",
-//     "productId": "864",
-//     "status": "Available",
-//     "bonusEvents": [],
-//     "minRedeemAmount": "",
-//     "maxRedeemAmount": "",
-//     "duration": "",
-//     "term": 0,
-//     "swapCoin": "",
-//     "swapCoinPrecision": "",
-//     "stakeExchangeRate": "",
-//     "redeemExchangeRate": "",
-//     "rewardDistributionType": "",
-//     "rewardIntervalMinute": 0,
-//     "redeemProcessingMinute": 0,
-//     "stakeTime": "",
-//     "interestCalculationTime": "",
-//     "hasTieredApr": false,
-//     "tierAprDetails": [],
-//     "remainingPoolAmount": "1475108.89260145"
-// }
