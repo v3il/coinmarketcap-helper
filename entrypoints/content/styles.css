@@ -64,6 +64,98 @@
     opacity: 1;
 }
 
+/* "Set amount" on the Holdings cell. Button and editor are absolutely positioned: the row never changes height. */
+.cmc-helper-editable {
+    position: relative;
+}
+
+.cmc-helper-edit {
+    position: absolute;
+    top: 50%;
+    left: 4px;
+    transform: translateY(-50%);
+    padding: 2px 6px;
+    border: 1px solid rgba(128, 138, 157, 0.4);
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font-size: 13px;
+    line-height: 16px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.cmc-helper-editable:hover .cmc-helper-edit,
+.cmc-helper-edit:focus-visible {
+    opacity: 0.8;
+}
+
+.cmc-helper-editor {
+    position: absolute;
+    z-index: 20;
+    top: 50%;
+    right: 4px;
+    transform: translateY(-50%);
+    width: 280px;
+    padding: 8px;
+    border: 1px solid rgba(128, 138, 157, 0.4);
+    border-radius: 10px;
+    background: #171924;
+    color: #e6e8ee;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    text-align: left;
+}
+
+.cmc-helper-editor__row {
+    display: flex;
+    gap: 6px;
+
+    input {
+        flex: 1;
+        min-width: 0;
+        padding: 6px 8px;
+        border: 1px solid rgba(128, 138, 157, 0.4);
+        border-radius: 6px;
+        background: #0f1117;
+        color: inherit;
+        font: inherit;
+        font-size: 13px;
+    }
+
+    button {
+        padding: 6px 10px;
+        border: 1px solid rgba(128, 138, 157, 0.4);
+        border-radius: 6px;
+        background: transparent;
+        color: inherit;
+        font-size: 13px;
+        cursor: pointer;
+    }
+}
+
+.cmc-helper-editor__confirm {
+    border-color: #3861fb !important;
+    background: #3861fb !important;
+    color: #fff !important;
+    font-weight: 600;
+
+    &:disabled {
+        opacity: 0.5;
+    }
+}
+
+.cmc-helper-editor__status {
+    margin-top: 6px;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.cmc-helper-editor__status--error {
+    color: #f28b82;
+    opacity: 1;
+}
+
 .cmc-helper-totals {
     display: flex;
     flex-wrap: wrap;

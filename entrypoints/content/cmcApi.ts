@@ -1,4 +1,4 @@
-import type { Holding } from '@/lib/holdings';
+import type { HoldingsByCoin } from '@/lib/holdings';
 
 // CoinMarketCap's own portfolio API, called with the user's session exactly like the CMC page does:
 // session cookies (same-site) plus the x-csrf-token header that CMC keeps in a readable cookie.
@@ -82,23 +82,74 @@ export async function fetchPortfolios(): Promise<PortfolioInfo[]> {
         .map((item) => ({ id: item.portfolioSourceId!, name: item.portfolioName, counted: item.beCounted !== false }));
 }
 
-/** Lower-case coin symbol -> where it's held: portfolio name and current value (USD) there. */
-export async function fetchHoldings(): Promise<Map<string, Holding[]>> {
-    type Item = { symbol: string; subItems: { portfolioName: string; value: number | string }[] | null };
-    const data = await post<{ list: Item[] }>('/asset/v3/portfolio/dashboard/query-summary', {});
-    const holdings = new Map<string, Holding[]>();
+export interface CoinInfo {
+    /** CMC cryptocurrency id. */
+    id: number;
+    /** Current price in USD. */
+    price: number;
+}
 
-    data.list.forEach(({ symbol, subItems }) => {
+export interface PortfolioSnapshot {
+    /** Lower-case symbol -> positions (portfolio, value, exact amount). */
+    holdings: HoldingsByCoin;
+    /** Lower-case symbol -> CMC id and price. */
+    coins: Map<string, CoinInfo>;
+}
+
+/** Every coin across all portfolios: where it's held, how much, and its current price. */
+export async function fetchPortfolioSnapshot(): Promise<PortfolioSnapshot> {
+    type SubItem = {
+        portfolioName: string; portfolioSourceId: string; value: number | string; balance: number | string
+    };
+    type Item = { symbol: string; cryptocurrencyId: number; currentPrice: number | string; subItems: SubItem[] | null };
+    const data = await post<{ list: Item[] }>('/asset/v3/portfolio/dashboard/query-summary', {});
+    const holdings: HoldingsByCoin = new Map();
+    const coins = new Map<string, CoinInfo>();
+
+    data.list.forEach(({ symbol, cryptocurrencyId, currentPrice, subItems }) => {
+        const key = symbol.toLowerCase();
+        coins.set(key, { id: cryptocurrencyId, price: Number(currentPrice) || 0 });
+
         const places = (subItems ?? [])
-            .map((item) => ({ portfolio: item.portfolioName, value: Number(item.value) || 0 }))
-            .filter((place) => place.value > 0);
+            .map((item) => ({
+                portfolio: item.portfolioName,
+                portfolioId: item.portfolioSourceId,
+                value: Number(item.value) || 0,
+                balance: Number(item.balance) || 0
+            }))
+            .filter((place) => place.balance > 0 || place.value > 0);
 
         if (places.length > 0) {
-            holdings.set(symbol.toLowerCase(), places);
+            holdings.set(key, places);
         }
     });
 
-    return holdings;
+    return { holdings, coins };
+}
+
+export interface NewTransaction {
+    type: 'buy' | 'sell';
+    portfolioId: string;
+    coinId: number;
+    amount: string;
+    price: string;
+    note?: string;
+}
+
+/** Adds a buy/sell transaction to a portfolio, like CMC's own "Add Transaction" dialog (no fee). */
+export async function addTransaction(tx: NewTransaction): Promise<void> {
+    await post('/asset/v3/portfolio/add', {
+        transactionType: tx.type,
+        cryptocurrencyId: tx.coinId,
+        cryptoUnit: USD_ID,
+        fiatUnit: USD_ID,
+        portfolioSourceId: tx.portfolioId,
+        amount: tx.amount,
+        price: tx.price,
+        transactionTime: new Date().toISOString(),
+        fee: '',
+        note: tx.note ?? ''
+    });
 }
 
 export async function fetchPortfolioTotals(id: string): Promise<PortfolioTotals> {

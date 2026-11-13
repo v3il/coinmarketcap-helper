@@ -6,6 +6,9 @@ export interface Holding {
     portfolio: string;
     /** Current value in USD. */
     value: number;
+    /** CMC portfolio id and exact coin amount there (on the CMC page only; not needed for alerts). */
+    portfolioId?: string;
+    balance?: number;
 }
 
 /** Lower-case coin symbol -> its positions across portfolios. */

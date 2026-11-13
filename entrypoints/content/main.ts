@@ -1,5 +1,5 @@
 import { EXCHANGES } from '@/lib/exchanges';
-import { exchangeResolver, type HoldingsByCoin } from '@/lib/holdings';
+import { exchangeResolver } from '@/lib/holdings';
 import {
     HOLDINGS_MESSAGE,
     PAGE_SETTINGS_CHANGED_MESSAGE,
@@ -9,7 +9,9 @@ import {
     type PortfolioMessage
 } from '@/lib/messages';
 import { loadRates, type LoadedRates } from '@/lib/rates';
-import { loadHoldings } from './holdings';
+import { renderAmountEditors } from './amountEditor';
+import type { PortfolioSnapshot } from './cmcApi';
+import { invalidateHoldings, loadHoldings } from './holdings';
 import { invalidatePageSettings, loadPageSettings } from './pageSettings';
 import {
     areBalancesHidden, getPortfolioTableSymbols, hasPortfolioTable, renderEarnColumn
@@ -27,8 +29,8 @@ export function main() {
     let scheduled = false;
 
     // Holdings and settings arrive asynchronously; each new value bumps the version so cells re-render.
-    let holdings: HoldingsByCoin | null = null;
-    let holdingsPromise: Promise<HoldingsByCoin | null> | undefined;
+    let snapshot: PortfolioSnapshot | null = null;
+    let snapshotPromise: Promise<PortfolioSnapshot | null> | undefined;
     let settings: PageSettings | null = null;
     let settingsPromise: Promise<PageSettings> | undefined;
     let version = 0;
@@ -45,8 +47,13 @@ export function main() {
         }
     };
 
-    const reportHoldings = (value: HoldingsByCoin) => {
-        const message: HoldingsMessage = { type: HOLDINGS_MESSAGE, holdings: Object.fromEntries(value) };
+    // Only portfolio names and values go to the worker (for alerts), not the exact amounts.
+    const reportHoldings = (value: PortfolioSnapshot) => {
+        const holdings = Object.fromEntries([...value.holdings].map(([symbol, places]) => [
+            symbol,
+            places.map(({ portfolio, value: usd }) => ({ portfolio, value: usd }))
+        ]));
+        const message: HoldingsMessage = { type: HOLDINGS_MESSAGE, holdings };
         chrome.runtime.sendMessage(message).catch(() => {});
     };
 
@@ -54,12 +61,12 @@ export function main() {
 
     // Start (or reuse) loads; when a fresh result arrives, store it and render again.
     const refreshData = () => {
-        const nextHoldings = loadHoldings();
+        const nextSnapshot = loadHoldings();
 
-        if (nextHoldings !== holdingsPromise) {
-            holdingsPromise = nextHoldings;
-            nextHoldings.then((value) => {
-                holdings = value;
+        if (nextSnapshot !== snapshotPromise) {
+            snapshotPromise = nextSnapshot;
+            nextSnapshot.then((value) => {
+                snapshot = value;
                 version++;
 
                 if (value) {
@@ -96,14 +103,34 @@ export function main() {
 
         const hidden = areBalancesHidden();
 
+        if (snapshot) {
+            renderAmountEditors({ snapshot, hidden, onAdded: refreshAfterTransaction });
+        }
+
         renderEarnColumn({
             rates: (await rates).byCoin,
-            holdings,
+            holdings: snapshot?.holdings ?? null,
             resolveExchange: exchangeResolver(settings?.portfolioExchanges),
             hidden,
             version: `${version}|${hidden}`
         });
     };
+
+    // A transaction was added: reload CMC's view of that portfolio (re-select it) and our own data.
+    function refreshAfterTransaction(portfolioName: string) {
+        invalidateHoldings();
+        invalidateTotals();
+        const item = [...document.querySelectorAll('[data-rbd-draggable-id] .name')]
+            .find((el) => el.textContent?.trim() === portfolioName) as HTMLElement | undefined;
+
+        if (item) {
+            item.click();
+        } else {
+            window.location.reload();
+        }
+
+        scheduleUpdate();
+    }
 
     scheduleUpdate = () => {
         if (!scheduled) {
