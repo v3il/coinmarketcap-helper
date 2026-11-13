@@ -72,12 +72,20 @@ function fill(banner: HTMLElement, totals: PortfolioTotals, hidden: boolean) {
 }
 
 /**
- * The element to put the banner in front of: the top of the portfolio content, i.e. CMC's header with the
- * charts (the table's container also holds it). Falls back to the table itself if the layout changes.
+ * The element to put the banner in front of: the top of the portfolio content (above "Total value"), or CMC's
+ * charts header, or the table itself — whichever the current layout allows.
  */
 function findAnchor(table: HTMLTableElement): Element {
     const tableWrapper = table.closest('.portfolio-tablelist-wrapper') ?? table;
 
+    // Preferred: the very top of the portfolio box, above CMC's "Total value" header.
+    const chartBox = tableWrapper.closest('[class*="StyledChartBox"]');
+
+    if (chartBox?.firstElementChild && !chartBox.firstElementChild.contains(tableWrapper)) {
+        return chartBox.firstElementChild;
+    }
+
+    // Otherwise: above CMC's charts, which share a container with the table.
     for (let el = tableWrapper.parentElement; el && el !== document.body; el = el.parentElement) {
         const header = [...el.children].find((child) => !child.contains(tableWrapper)
             && (child.matches('[class*="header-wrapper"]') || child.querySelector('[class*="header-wrapper"]')));
