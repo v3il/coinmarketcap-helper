@@ -1,5 +1,5 @@
 import { EXCHANGES, type Exchange } from './exchanges';
-import { flexibleApr, type ExchangeRates } from './rates';
+import type { ExchangeRates } from './rates';
 
 /** A coin's position in one CMC portfolio. */
 export interface Holding {
@@ -65,12 +65,13 @@ export function bestIncomeRate(list: ExchangeRates[] = []): IncomeRate | null {
 }
 
 /**
- * The rate a position most likely earns now: the flexible rate of the exchange it sits on.
- * Wallets, unknown places and exchanges without a flexible product count as 0%.
+ * The rate a position most likely earns now: the best realistic rate of the exchange it sits on (users stake at
+ * the best rate their exchange offers, e.g. WhiteBIT 30d when there's no flexible plan).
+ * Wallets, unknown places and exchanges without an earn product for the coin count as 0%.
  */
 export function currentApr(exchange: Exchange | null, list: ExchangeRates[] = []): number {
-    const rates = exchange ? list.find((item) => item.exchange.id === exchange.id)?.rates : undefined;
-    return rates ? flexibleApr(rates) : 0;
+    const own = exchange ? list.filter((item) => item.exchange.id === exchange.id) : [];
+    return bestIncomeRate(own)?.apr ?? 0;
 }
 
 export interface Income {

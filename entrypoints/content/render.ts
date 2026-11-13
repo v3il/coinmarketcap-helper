@@ -177,7 +177,7 @@ function createIncome(holdings: Holding[], exchangeRates: ExchangeRates[], conte
         'div',
         {
             class: better ? 'cmc-helper-earn__income cmc-helper-earn__income--better' : 'cmc-helper-earn__income',
-            title: 'Now: the flexible rate where the coin is held (0% in wallets and without an earn product).'
+            title: 'Now: the best rate where the coin is held (0% in wallets and without an earn product).'
                 + `${better ? `\nBest: ${describe(income.bestRate)} (fixed terms under 7 days are ignored).` : ''}`
         },
         text

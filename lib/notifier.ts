@@ -35,7 +35,7 @@ const usd = (value: number) => new Intl.NumberFormat('en-US', {
 
 /**
  * "💼 Bybit: ~0.10% = $0.30/yr → +$22/yr on Binance" for every place where the best rate would earn
- * noticeably more. "Now" assumes the flexible rate of the exchange the coin sits on (0% in wallets).
+ * noticeably more. "Now" assumes the best rate of the exchange the coin sits on (0% in wallets).
  */
 function describePositions(
     holdings: { portfolio: string; value: number }[],
