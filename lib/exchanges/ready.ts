@@ -46,7 +46,7 @@ export const ready: Exchange = {
     logoUrl: LOGO,
 
     async loadRates() {
-        const { investments } = await fetchJson<Response>(URL, { headers: { 'Accept-Language': 'en' } });
+        const { investments } = await fetchJson<Response>(URL);
 
         return toRates(investments, (investment) => {
             const symbol = symbolOf(investment);
