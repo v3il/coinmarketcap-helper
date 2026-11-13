@@ -12,7 +12,8 @@ It can also watch those rates in the background and message you in **Telegram** 
 ---
 
 ## ✨ Key Features
-- 💰 **Multi-exchange support** — **Binance**, **Bybit**, **OKX**, **MEXC** and **WhiteBIT**.
+- 💰 **Multi-exchange support** — **Binance**, **Bybit**, **OKX**, **MEXC** and **WhiteBIT**, plus native
+  staking in the **Ready** wallet (STRK and BTC tokens on Starknet).
 - ⏳ **Flexible and fixed-term rates** — each rate is shown with its term: `∞` for flexible (redeem any time),
   `7d`, `30d`… for fixed-term products (up to 60 days on Binance and WhiteBIT).
 - 🏆 **Best offer first** — exchanges are sorted by their best rate; the best flexible rate is highlighted in blue,

@@ -26,6 +26,7 @@ export default defineConfig({
             'https://www.okx.com/*',
             'https://www.mexc.com/*',
             'https://internal.whitebit.com/*',
+            'https://cloud.argent-api.com/*',
             'https://api.telegram.org/*'
         ]
     }
