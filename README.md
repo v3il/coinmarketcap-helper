@@ -9,9 +9,6 @@ from several exchanges for every coin in your portfolio and showing them right i
 
 It can also watch those rates in the background and message you in **Telegram** when a better rate shows up.
 
-> ⚠️ **Note:** This is an **early version**. The extension is still evolving and will be expanded with new features,
-> improvements, and additional data sources over time.
-
 ---
 
 ## ✨ Key Features
