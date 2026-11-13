@@ -66,51 +66,69 @@ function fill(banner: HTMLElement, totals: PortfolioTotals, hidden: boolean) {
 }
 
 /**
- * Shows invested / value / profit-loss across all portfolios above the portfolio table, on the overview and
- * on every single-portfolio page. Idempotent: only re-renders when CMC's hide-balances mode changes.
+ * The element to put the banner in front of: the top of the portfolio content, i.e. CMC's header with the
+ * charts (the table's container also holds it). Falls back to the table itself if the layout changes.
  */
-export function renderTotalsBanners() {
-    document.querySelectorAll<HTMLTableElement>(TABLE_SELECTOR).forEach((table) => {
-        if (!table.querySelector('tbody tr')) {
+function findAnchor(table: HTMLTableElement): Element {
+    const tableWrapper = table.closest('.portfolio-tablelist-wrapper') ?? table;
+
+    for (let el = tableWrapper.parentElement; el && el !== document.body; el = el.parentElement) {
+        const header = [...el.children].find((child) => !child.contains(tableWrapper)
+            && (child.matches('[class*="header-wrapper"]') || child.querySelector('[class*="header-wrapper"]')));
+
+        if (header) {
+            return header;
+        }
+    }
+
+    return tableWrapper;
+}
+
+/**
+ * Shows invested / value / profit-loss across all portfolios at the top of the portfolio page, on the overview
+ * and on every single-portfolio page. Idempotent: only re-renders when CMC's hide-balances mode changes.
+ */
+export function renderTotalsBanner() {
+    const table = document.querySelector<HTMLTableElement>(TABLE_SELECTOR);
+
+    if (!table?.querySelector('tbody tr')) {
+        return;
+    }
+
+    const anchor = findAnchor(table);
+    const banner = document.querySelector<HTMLElement>(`.${BANNER_CLASS}`)
+        ?? h('div', { class: BANNER_CLASS, hidden: '' });
+
+    // (Re)place it: CMC may re-render the page around it.
+    if (anchor.previousElementSibling !== banner) {
+        anchor.before(banner);
+    }
+
+    const hidden = (table.textContent ?? '').includes('****');
+    const renderKey = String(hidden);
+
+    if (banner.dataset.key === renderKey) {
+        return;
+    }
+
+    banner.dataset.key = renderKey;
+
+    loadTotals().then((totals) => {
+        if (banner.dataset.key !== renderKey) {
             return;
         }
 
-        const anchor = table.closest('.portfolio-tablelist-wrapper') ?? table;
-        const previous = anchor.previousElementSibling;
-        let banner = previous?.classList.contains(BANNER_CLASS) ? previous as HTMLElement : null;
-
-        if (!banner) {
-            banner = h('div', { class: BANNER_CLASS, hidden: '' });
-            anchor.before(banner);
-        }
-
-        const hidden = (table.textContent ?? '').includes('****');
-        const renderKey = String(hidden);
-
-        if (banner.dataset.key === renderKey) {
+        if (totals) {
+            fill(banner, totals, hidden);
             return;
         }
 
-        banner.dataset.key = renderKey;
-        const target = banner;
-
-        loadTotals().then((totals) => {
-            if (target.dataset.key !== renderKey) {
-                return;
+        // Failed: stay hidden, and let a later DOM update retry once the failure cooldown has passed.
+        banner.hidden = true;
+        setTimeout(() => {
+            if (banner.dataset.key === renderKey) {
+                delete banner.dataset.key;
             }
-
-            if (totals) {
-                fill(target, totals, hidden);
-                return;
-            }
-
-            // Failed: stay hidden, and let a later DOM update retry once the failure cooldown has passed.
-            target.hidden = true;
-            setTimeout(() => {
-                if (target.dataset.key === renderKey) {
-                    delete target.dataset.key;
-                }
-            }, RETRY_AFTER_MS);
-        });
+        }, RETRY_AFTER_MS);
     });
 }

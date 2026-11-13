@@ -48,7 +48,7 @@
     flex-wrap: wrap;
     align-items: flex-end;
     gap: 12px 32px;
-    margin-bottom: 16px;
+    margin: 24px 0 16px;
     padding: 14px 20px;
     border: 1px solid rgba(128, 138, 157, 0.25);
     border-radius: 12px;
