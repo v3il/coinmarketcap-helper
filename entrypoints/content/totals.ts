@@ -55,7 +55,6 @@ function fill(banner: HTMLElement, totals: PortfolioTotals, hidden: boolean) {
     );
 
     banner.replaceChildren(
-        h('div', { class: `${BANNER_CLASS}__title` }, 'All portfolios'),
         stat('Invested', money(totals.invested)),
         stat('Value', money(totals.value)),
         stat('Profit / Loss', hidden ? percent : `${money(totals.pl, true)} (${percent})`, signClass(totals.pl)),
