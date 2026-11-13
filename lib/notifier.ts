@@ -33,7 +33,10 @@ const usd = (value: number) => new Intl.NumberFormat('en-US', {
     style: 'currency', currency: 'USD', maximumFractionDigits: value < 10 ? 2 : 0
 }).format(value);
 
-/** "💼 Bybit: 0.10% → +$129/yr" for every place where the best rate would earn noticeably more. */
+/**
+ * "💼 Bybit: ~0.10% = $0.30/yr → +$22/yr on Binance" for every place where the best rate would earn
+ * noticeably more. "Now" assumes the flexible rate of the exchange the coin sits on (0% in wallets).
+ */
 function describePositions(
     holdings: { portfolio: string; value: number }[],
     best: BestRate,
@@ -50,7 +53,11 @@ function describePositions(
         }
 
         const place = escapeHtml(exchange?.name ?? portfolio);
-        return [`💼 ${place}: ${now.toFixed(2)}% → <b>+${usd(extra)}/yr</b>`];
+        const income = usd((value * now) / 100);
+        return [
+            `💼 ${place}: ~${now.toFixed(2)}% = ${income}/yr`
+                + ` → <b>+${usd(extra)}/yr</b> on ${escapeHtml(best.exchangeName)}`
+        ];
     });
 }
 
@@ -58,7 +65,7 @@ function describePositions(
  * 🪙 BERA
  * 🔥 7.37% · Binance · flexible
  * ↗️ +2.19 pp (was 5.18% · Binance · flexible)
- * 💼 Bybit: 0.10% → +$12/yr
+ * 💼 Bybit: ~0.10% = $0.30/yr → +$22/yr on Binance
  */
 const formatAlerts = (alerts: Alert[]) => [
     `📈 <b>New best ${alerts.length === 1 ? 'rate' : 'rates'}</b>`,
