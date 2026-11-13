@@ -146,43 +146,8 @@ function createCell(symbol: string, context: EarnContext) {
         'td',
         { class: CELL_CLASS, 'data-symbol': symbol },
         ...rows,
-        ...createUnratedPlaces(holdings, exchangeRates, context),
         createIncome(holdings, exchangeRates, context)
     );
-}
-
-/**
- * One quiet line for places where the coin is held but we know no rate: wallets, or exchanges without an earn
- * product for it — "also in Earn, Telegram · no known rate".
- */
-function createUnratedPlaces(holdings: Holding[], exchangeRates: ExchangeRates[], context: EarnContext) {
-    const rated = new Set(exchangeRates.map(({ exchange }) => exchange.id));
-    const labels = new Set<string>();
-    let heldOnRated = false;
-
-    holdings.forEach((holding) => {
-        const exchange = context.resolveExchange(holding.portfolio);
-
-        if (exchange && rated.has(exchange.id)) {
-            heldOnRated = true;
-        } else {
-            labels.add(exchange?.name ?? holding.portfolio);
-        }
-    });
-
-    if (labels.size === 0) {
-        return [];
-    }
-
-    return [h(
-        'div',
-        {
-            class: 'cmc-helper-earn__elsewhere',
-            title: 'You hold the coin in these portfolios, but there is no known rate there '
-                + '(wallets, or exchanges without an earn product for this coin).'
-        },
-        `${heldOnRated ? 'also in' : 'in'} ${[...labels].join(', ')} · no known rate`
-    )];
 }
 
 /** "≈ $12/yr → $141/yr": yearly income now vs. at the best realistic rate. */
