@@ -151,33 +151,38 @@ function createCell(symbol: string, context: EarnContext) {
     );
 }
 
-/** Places where the coin is held but earns nothing we know of: wallets, or exchanges without a product for it. */
+/**
+ * One quiet line for places where the coin is held but we know no rate: wallets, or exchanges without an earn
+ * product for it — "also in Earn, Telegram · no known rate".
+ */
 function createUnratedPlaces(holdings: Holding[], exchangeRates: ExchangeRates[], context: EarnContext) {
     const rated = new Set(exchangeRates.map(({ exchange }) => exchange.id));
-    const shown = new Set<string>();
+    const labels = new Set<string>();
+    let heldOnRated = false;
 
-    return holdings.flatMap((holding) => {
+    holdings.forEach((holding) => {
         const exchange = context.resolveExchange(holding.portfolio);
-        const label = exchange?.name ?? holding.portfolio;
 
-        if ((exchange && rated.has(exchange.id)) || shown.has(label)) {
-            return [];
+        if (exchange && rated.has(exchange.id)) {
+            heldOnRated = true;
+        } else {
+            labels.add(exchange?.name ?? holding.portfolio);
         }
-
-        shown.add(label);
-
-        return [h(
-            'div',
-            {
-                class: 'cmc-helper-earn cmc-helper-earn--held cmc-helper-earn--unrated',
-                title: `${label} — you hold it here`
-            },
-            h('div', { class: 'cmc-helper-earn__content' }, h('span', { class: 'cmc-helper-earn__tip' }, 'no earn')),
-            exchange
-                ? h('img', { src: exchange.logoUrl, alt: exchange.name })
-                : h('span', { class: 'cmc-helper-earn__place' }, label)
-        )];
     });
+
+    if (labels.size === 0) {
+        return [];
+    }
+
+    return [h(
+        'div',
+        {
+            class: 'cmc-helper-earn__elsewhere',
+            title: 'You hold the coin in these portfolios, but there is no known rate there '
+                + '(wallets, or exchanges without an earn product for this coin).'
+        },
+        `${heldOnRated ? 'also in' : 'in'} ${[...labels].join(', ')} · no known rate`
+    )];
 }
 
 /** "≈ $12/yr → $141/yr": yearly income now vs. at the best realistic rate. */

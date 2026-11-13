@@ -43,30 +43,19 @@
     font-weight: 600;
 }
 
-/* The exchange (or wallet) where the user holds the coin. */
-.cmc-helper-earn--held img,
-.cmc-helper-earn--held .cmc-helper-earn__place {
+/* The exchange where the user holds the coin. */
+.cmc-helper-earn--held img {
+    border-radius: 50%;
     outline: 2px solid #f4b860;
     outline-offset: 2px;
 }
 
-.cmc-helper-earn--held img {
-    border-radius: 50%;
-}
-
-.cmc-helper-earn--unrated .cmc-helper-earn__tip {
-    background: transparent;
-    border: 1px dashed rgba(128, 138, 157, 0.5);
-    color: inherit;
-    opacity: 0.7;
-}
-
-.cmc-helper-earn__place {
-    padding: 0 6px;
-    border-radius: 6px;
-    font-size: 11px;
-    line-height: 16px;
-    white-space: nowrap;
+/* Where the coin is held without a known rate (wallets, exchanges without a product). */
+.cmc-helper-earn__elsewhere {
+    margin-top: 6px;
+    font-size: 12px;
+    text-align: right;
+    opacity: 0.6;
 }
 
 .cmc-helper-earn__income {
