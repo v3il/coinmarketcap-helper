@@ -43,6 +43,53 @@
     font-weight: 600;
 }
 
+.cmc-helper-totals {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px 32px;
+    margin-bottom: 16px;
+    padding: 14px 20px;
+    border: 1px solid rgba(128, 138, 157, 0.25);
+    border-radius: 12px;
+    background: rgba(128, 138, 157, 0.06);
+
+    &[hidden] {
+        display: none;
+    }
+}
+
+.cmc-helper-totals__title {
+    flex-basis: 100%;
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0.7;
+}
+
+.cmc-helper-totals__stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cmc-helper-totals__label {
+    font-size: 12px;
+    opacity: 0.6;
+}
+
+.cmc-helper-totals__value {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.cmc-helper-totals__value--up {
+    color: #16c784;
+}
+
+.cmc-helper-totals__value--down {
+    color: #ea3943;
+}
+
 div:has(> div > div[id^="google_ads_iframe"]), /* Ads */
 .cmc-sponsor, /* Ads */
 [cmc-ui-portal] .popover-base:has([data-scope="base-item-wrapper"]) { /* AI floating */

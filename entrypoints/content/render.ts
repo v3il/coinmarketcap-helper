@@ -2,10 +2,29 @@ import type { Rate } from '@/lib/exchanges';
 import { flexibleApr, type ExchangeRates, type RatesByCoin } from '@/lib/rates';
 import { h } from './dom';
 
-const TABLE_SELECTOR = '.portfolio-tablelist-wrapper .cmc-table';
+export const TABLE_SELECTOR = '.portfolio-tablelist-wrapper .cmc-table';
 // Overview table uses .symbol-name; per-portfolio table uses .coin-item-symbol.
 const OVERVIEW_SYMBOL_SELECTOR = '.symbol-name';
 const SYMBOL_SELECTOR = '.symbol-name, .coin-item-symbol';
+
+export type TableView =
+    | { kind: 'overview'; key: string }
+    | { kind: 'portfolio'; key: string; symbols: string[] };
+
+/** Which view a portfolio table shows: the overview of all portfolios, or one portfolio (by its coins). */
+export function getTableView(table: HTMLTableElement): TableView | null {
+    const symbols = [...new Set([...table.querySelectorAll(`tbody ${SYMBOL_SELECTOR}`)]
+        .map((el) => el.textContent?.trim().toLowerCase())
+        .filter((symbol): symbol is string => !!symbol))].sort();
+
+    if (symbols.length === 0) {
+        return null;
+    }
+
+    return table.querySelector(OVERVIEW_SYMBOL_SELECTOR)
+        ? { kind: 'overview', key: 'overview' }
+        : { kind: 'portfolio', key: `portfolio:${symbols.join(',')}`, symbols };
+}
 
 const COL_CLASS = 'cmc-helper-earn-col';
 const HEAD_CLASS = 'cmc-helper-earn-head';

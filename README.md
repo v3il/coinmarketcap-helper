@@ -17,6 +17,9 @@ It can also watch those rates in the background and message you in **Telegram** 
   `7d`, `30d`… for fixed-term products (up to 60 days on Binance and WhiteBIT).
 - 🏆 **Best offer first** — exchanges are sorted by their best rate; the best flexible rate is highlighted in blue,
   the best fixed-term rate in green.
+- 📊 **Portfolio totals** — a banner above the portfolio table with invested, current value and all-time
+  profit/loss (realized and unrealized), for the overview or the portfolio you're viewing. Amounts stay hidden
+  when you hide balances in CoinMarketCap.
 - 🔔 **Telegram alerts** — get a message when the best rate for one of your coins goes up.
 - ⚡ **No login, no API keys** — only public / website endpoints are used.
 - 🔒 **Private** — everything runs locally in your browser; nothing is sent anywhere except to the exchanges and,

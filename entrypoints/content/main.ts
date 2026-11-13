@@ -2,6 +2,7 @@ import { EXCHANGES } from '@/lib/exchanges';
 import { PORTFOLIO_MESSAGE, type PortfolioMessage } from '@/lib/messages';
 import { loadRates, type LoadedRates } from '@/lib/rates';
 import { getPortfolioTableSymbols, hasPortfolioTable, renderEarnColumn } from './render';
+import { renderTotalsBanners } from './totals';
 import './styles.css';
 
 const isPortfolioPage = () => window.location.pathname.startsWith('/portfolio-tracker');
@@ -33,6 +34,7 @@ export function main() {
         }
 
         reportPortfolio();
+        renderTotalsBanners();
         rates ??= loadRates(EXCHANGES);
         renderEarnColumn((await rates).byCoin);
     };
