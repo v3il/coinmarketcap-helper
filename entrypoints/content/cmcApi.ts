@@ -19,8 +19,6 @@ export interface PortfolioTotals {
     value: number;
     /** All-time profit/loss (USD), realized + unrealized, as CMC computes it. */
     pl: number;
-    realized: number;
-    unrealized: number;
 }
 
 interface ApiResponse<T> {
@@ -92,9 +90,7 @@ export async function fetchPortfolioTotals(id: string): Promise<PortfolioTotals>
     return {
         invested: num('allTotalBuySpent'),
         value: num('currentTotalHoldings'),
-        pl: num('totalPlValue'),
-        realized: num('realizedProfit'),
-        unrealized: num('unrealizedProfit')
+        pl: num('totalPlValue')
     };
 }
 
@@ -102,8 +98,6 @@ export function sumTotals(list: PortfolioTotals[]): PortfolioTotals {
     return list.reduce((sum, item) => ({
         invested: sum.invested + item.invested,
         value: sum.value + item.value,
-        pl: sum.pl + item.pl,
-        realized: sum.realized + item.realized,
-        unrealized: sum.unrealized + item.unrealized
-    }), { invested: 0, value: 0, pl: 0, realized: 0, unrealized: 0 });
+        pl: sum.pl + item.pl
+    }), { invested: 0, value: 0, pl: 0 });
 }

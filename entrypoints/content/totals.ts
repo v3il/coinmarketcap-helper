@@ -57,9 +57,7 @@ function fill(banner: HTMLElement, totals: PortfolioTotals, hidden: boolean) {
     banner.replaceChildren(
         stat('Invested', money(totals.invested)),
         stat('Value', money(totals.value)),
-        stat('Profit / Loss', hidden ? percent : `${money(totals.pl, true)} (${percent})`, signClass(totals.pl)),
-        stat('Realized', money(totals.realized, true), signClass(totals.realized)),
-        stat('Unrealized', money(totals.unrealized, true), signClass(totals.unrealized))
+        stat('Profit / Loss', hidden ? percent : `${money(totals.pl, true)} (${percent})`, signClass(totals.pl))
     );
     banner.hidden = false;
 }

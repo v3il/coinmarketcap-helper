@@ -18,7 +18,7 @@ It can also watch those rates in the background and message you in **Telegram** 
 - 🏆 **Best offer first** — exchanges are sorted by their best rate; the best flexible rate is highlighted in blue,
   the best fixed-term rate in green.
 - 📊 **Portfolio totals** — a banner at the top of the portfolio page with invested, current value and all-time
-  profit/loss (realized and unrealized) across all your portfolios, on every portfolio page. Amounts stay hidden
+  profit/loss across all your portfolios, on every portfolio page. Amounts stay hidden
   when you hide balances in CoinMarketCap.
 - 🔔 **Telegram alerts** — get a message when the best rate for one of your coins goes up.
 - ⚡ **No login, no API keys** — only public / website endpoints are used.
