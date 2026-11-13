@@ -1,8 +1,9 @@
 import { EXCHANGES, type Rate } from './exchanges';
+import { currentApr, exchangeResolver, type ExchangeResolver } from './holdings';
 import { getPortfolioSymbols } from './portfolio';
-import { loadRates } from './rates';
+import { loadRates, type ExchangeRates } from './rates';
 import {
-    knownRatesItem, lastCheckItem, settingsItem, type BestRate, type CheckStatus, type CoinSnapshot
+    getSettings, holdingsItem, knownRatesItem, lastCheckItem, type BestRate, type CheckStatus, type CoinSnapshot
 } from './storage';
 import { escapeHtml, sendMessage } from './telegram';
 
@@ -10,6 +11,8 @@ interface Alert {
     symbol: string;
     best: BestRate;
     previous: BestRate;
+    /** Where the user holds the coin and what moving it to the best rate would add. */
+    positions: string[];
 }
 
 /** On equal APR, the shorter term is better. */
@@ -23,16 +26,42 @@ const describe = ({ apr, days, exchangeName }: BestRate) => (
     `${apr.toFixed(2)}% — ${escapeHtml(exchangeName)}, ${days === 0 ? '∞' : `${days}d`}`
 );
 
+const usd = (value: number) => new Intl.NumberFormat('en-US', {
+    style: 'currency', currency: 'USD', maximumFractionDigits: value < 10 ? 2 : 0
+}).format(value);
+
+/** "💼 Bybit: 0.10% → +$129/yr" for every place where the best rate would earn noticeably more. */
+function describePositions(
+    holdings: { portfolio: string; value: number }[],
+    best: BestRate,
+    list: ExchangeRates[],
+    resolve: ExchangeResolver
+): string[] {
+    return holdings.flatMap(({ portfolio, value }) => {
+        const exchange = resolve(portfolio);
+        const now = currentApr(exchange, list);
+        const extra = (value * (best.apr - now)) / 100;
+
+        if (extra < 0.5) {
+            return [];
+        }
+
+        const place = escapeHtml(exchange?.name ?? portfolio);
+        return [`💼 ${place}: ${now.toFixed(2)}% → <b>+${usd(extra)}/yr</b>`];
+    });
+}
+
 const formatAlerts = (alerts: Alert[]) => [
     '📈 <b>New best rates</b>',
-    '',
-    ...alerts.map(({ symbol, best, previous }) => (
-        `<b>${escapeHtml(symbol.toUpperCase())}</b>: ${describe(best)}\n<i>was ${describe(previous)}</i>`
-    ))
-].join('\n');
+    ...alerts.map(({ symbol, best, previous, positions }) => [
+        `<b>${escapeHtml(symbol.toUpperCase())}</b>: ${describe(best)}`,
+        `<i>was ${describe(previous)}</i>`,
+        ...positions
+    ].join('\n'))
+].join('\n\n');
 
 async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
-    const settings = await settingsItem.getValue();
+    const settings = await getSettings();
 
     if (!settings.botToken || !settings.chatId) {
         return { ok: false, message: 'Telegram is not configured', failedExchanges: [] };
@@ -53,6 +82,8 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
     }
 
     const previous = await knownRatesItem.getValue();
+    const holdings = await holdingsItem.getValue();
+    const resolve = exchangeResolver(settings.portfolioExchanges);
     const next: Record<string, CoinSnapshot> = {};
     const alerts: Alert[] = [];
 
@@ -81,7 +112,8 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
 
         // New coins only get a baseline; alerts are for increases.
         if (best && previousBest && best.apr >= previousBest.apr + settings.minIncrease) {
-            alerts.push({ symbol, best, previous: previousBest });
+            const positions = describePositions(holdings[symbol] ?? [], best, byCoin.get(symbol) ?? [], resolve);
+            alerts.push({ symbol, best, previous: previousBest, positions });
         }
 
         if (best) {

@@ -1,8 +1,7 @@
-import {
-    PAGE_SETTINGS_MESSAGE, PORTFOLIO_NAMES_MESSAGE, type PageSettings, type PortfolioNamesMessage
-} from '@/lib/messages';
+import { PORTFOLIO_NAMES_MESSAGE, type PortfolioNamesMessage } from '@/lib/messages';
 import { fetchPortfolios, fetchPortfolioTotals, sumTotals, type PortfolioTotals } from './cmcApi';
 import { h } from './dom';
+import { loadPageSettings } from './pageSettings';
 import { TABLE_SELECTOR } from './render';
 
 const BANNER_CLASS = 'cmc-helper-totals';
@@ -13,8 +12,8 @@ let cache: { at: number; ttl: number; promise: Promise<PortfolioTotals | null> }
 
 /** Lower-case names of portfolios the user excluded from the totals in the extension settings. */
 async function getExcludedPortfolios(): Promise<Set<string>> {
-    const response: PageSettings | undefined = await chrome.runtime.sendMessage({ type: PAGE_SETTINGS_MESSAGE });
-    return new Set((response?.excludedPortfolios ?? []).map((name) => name.trim().toLowerCase()));
+    const { excludedPortfolios } = await loadPageSettings();
+    return new Set(excludedPortfolios.map((name) => name.trim().toLowerCase()));
 }
 
 /** Forget loaded totals and re-render the banner on the next update (e.g. after the settings changed). */

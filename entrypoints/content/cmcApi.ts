@@ -1,3 +1,5 @@
+import type { Holding } from '@/lib/holdings';
+
 // CoinMarketCap's own portfolio API, called with the user's session exactly like the CMC page does:
 // session cookies (same-site) plus the x-csrf-token header that CMC keeps in a readable cookie.
 // Runs in the content script only; nothing from here is sent to the extension's background or anywhere else.
@@ -78,6 +80,25 @@ export async function fetchPortfolios(): Promise<PortfolioInfo[]> {
     return data
         .filter((item) => item.portfolioSourceId)
         .map((item) => ({ id: item.portfolioSourceId!, name: item.portfolioName, counted: item.beCounted !== false }));
+}
+
+/** Lower-case coin symbol -> where it's held: portfolio name and current value (USD) there. */
+export async function fetchHoldings(): Promise<Map<string, Holding[]>> {
+    type Item = { symbol: string; subItems: { portfolioName: string; value: number | string }[] | null };
+    const data = await post<{ list: Item[] }>('/asset/v3/portfolio/dashboard/query-summary', {});
+    const holdings = new Map<string, Holding[]>();
+
+    data.list.forEach(({ symbol, subItems }) => {
+        const places = (subItems ?? [])
+            .map((item) => ({ portfolio: item.portfolioName, value: Number(item.value) || 0 }))
+            .filter((place) => place.value > 0);
+
+        if (places.length > 0) {
+            holdings.set(symbol.toLowerCase(), places);
+        }
+    });
+
+    return holdings;
 }
 
 export async function fetchPortfolioTotals(id: string): Promise<PortfolioTotals> {

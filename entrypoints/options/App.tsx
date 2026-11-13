@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
+import { EXCHANGES } from '@/lib/exchanges';
+import { guessExchange, NOT_AN_EXCHANGE } from '@/lib/holdings';
 import { CHECK_NOW_MESSAGE } from '@/lib/messages';
 import { getPortfolioSymbols } from '@/lib/portfolio';
 import {
@@ -70,7 +72,8 @@ export function App() {
             chatId: form.chatId.trim(),
             minIncrease: Math.max(0.1, form.minIncrease || DEFAULT_SETTINGS.minIncrease),
             intervalHours: Math.min(24, Math.max(1, Math.round(form.intervalHours || DEFAULT_SETTINGS.intervalHours))),
-            excludedPortfolios: form.excludedPortfolios
+            excludedPortfolios: form.excludedPortfolios,
+            portfolioExchanges: form.portfolioExchanges
         };
 
         await settingsItem.setValue(value);
@@ -98,6 +101,19 @@ export function App() {
         await settingsItem.setValue({ ...current, excludedPortfolios });
         setForm((value) => ({ ...value, excludedPortfolios }));
         setSaved((value) => ({ ...value, excludedPortfolios }));
+    };
+
+    /** The exchange chosen for a portfolio, or the guess from its name if the user hasn't chosen yet. */
+    const exchangeOf = (name: string) => form.portfolioExchanges[name] ?? guessExchange(name)?.id ?? NOT_AN_EXCHANGE;
+
+    // Saves right away, like the checkboxes.
+    const onPickExchange = async (name: string, exchangeId: string) => {
+        const current = await getSettings();
+        const portfolioExchanges = { ...current.portfolioExchanges, [name]: exchangeId };
+
+        await settingsItem.setValue({ ...current, portfolioExchanges });
+        setForm((value) => ({ ...value, portfolioExchanges }));
+        setSaved((value) => ({ ...value, portfolioExchanges }));
     };
 
     const onFindChat = () => run(async () => {
@@ -132,23 +148,38 @@ export function App() {
             <h1>CMC Helper</h1>
 
             <section>
-                <h2>Portfolio totals</h2>
+                <h2>Portfolios</h2>
                 <p class="hint">
-                    Portfolios counted in the totals banner on CoinMarketCap. Uncheck the ones that aren’t
-                    investments, e.g. savings.
+                    Where each CoinMarketCap portfolio is held, so the Earn column can show where a coin earns
+                    now and how much more it could. Guessed from the name until you pick. Uncheck “In totals”
+                    for portfolios that aren’t investments, e.g. savings.
                 </p>
                 {knownPortfolios.length > 0 ? (
-                    <div class="checks">
-                        {knownPortfolios.map((name) => (
-                            <label class="check" key={name}>
-                                <input
-                                    type="checkbox"
-                                    checked={!isExcluded(name)}
-                                    onChange={(e) => onTogglePortfolio(name, e.currentTarget.checked)}
-                                />
-                                <span>{name}</span>
-                            </label>
-                        ))}
+                    <div class="portfolios">
+                        <span class="portfolios__head">Portfolio</span>
+                        <span class="portfolios__head">Held on</span>
+                        <span class="portfolios__head">In totals</span>
+                        {knownPortfolios.map((name) => [
+                            <span key={`${name}-name`} class="portfolios__name">{name}</span>,
+                            <select
+                                key={`${name}-exchange`}
+                                aria-label={`Where ${name} is held`}
+                                value={exchangeOf(name)}
+                                onChange={(e) => onPickExchange(name, e.currentTarget.value)}
+                            >
+                                {EXCHANGES.map((exchange) => (
+                                    <option key={exchange.id} value={exchange.id}>{exchange.name}</option>
+                                ))}
+                                <option value={NOT_AN_EXCHANGE}>Wallet / other</option>
+                            </select>,
+                            <input
+                                key={`${name}-totals`}
+                                type="checkbox"
+                                aria-label={`Count ${name} in totals`}
+                                checked={!isExcluded(name)}
+                                onChange={(e) => onTogglePortfolio(name, e.currentTarget.checked)}
+                            />
+                        ])}
                     </div>
                 ) : (
                     <p class="hint">Open your portfolio on CoinMarketCap — the list is picked up from there.</p>

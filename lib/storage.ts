@@ -10,6 +10,8 @@ export interface Settings {
     intervalHours: number;
     /** CMC portfolio names left out of the totals banner (e.g. savings), matched case-insensitively. */
     excludedPortfolios: string[];
+    /** CMC portfolio name -> exchange id or 'none' (wallet / other). Unset portfolios are guessed by name. */
+    portfolioExchanges: Record<string, string>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -17,7 +19,8 @@ export const DEFAULT_SETTINGS: Settings = {
     chatId: '',
     minIncrease: 1,
     intervalHours: 4,
-    excludedPortfolios: []
+    excludedPortfolios: [],
+    portfolioExchanges: {}
 };
 
 /** Settings with defaults filled in for keys added after the user first saved them. */
@@ -55,5 +58,11 @@ export const knownRatesItem = storage.defineItem<Record<string, CoinSnapshot>>('
 
 /** Names of the user's CMC portfolios, as last seen on coinmarketcap.com (for the settings page). */
 export const knownPortfoliosItem = storage.defineItem<string[]>('local:knownPortfolios', { fallback: [] });
+
+/** Lower-case coin symbol -> positions (portfolio name, USD value), as last seen on CMC; for personal alerts. */
+export const holdingsItem = storage.defineItem<Record<string, { portfolio: string; value: number }[]>>(
+    'local:holdings',
+    { fallback: {} }
+);
 
 export const lastCheckItem = storage.defineItem<CheckStatus | null>('local:lastCheck', { fallback: null });

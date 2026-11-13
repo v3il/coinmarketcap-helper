@@ -157,23 +157,23 @@ section > p:last-child {
     word-break: break-word;
 }
 
-.checks {
+.portfolios {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 10px 16px;
-}
-
-label.check {
-    display: flex;
+    grid-template-columns: 1fr auto auto;
     align-items: center;
-    gap: 10px;
-    cursor: pointer;
+    gap: 8px 20px;
 
-    span {
-        font-weight: 400;
+    select {
+        padding: 6px 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface-2);
+        color: var(--text);
+        font: inherit;
     }
 
-    input {
+    input[type='checkbox'] {
+        justify-self: center;
         width: 18px;
         height: 18px;
         margin: 0;
@@ -181,4 +181,9 @@ label.check {
         accent-color: var(--accent);
         cursor: pointer;
     }
+}
+
+.portfolios__head {
+    color: var(--faint);
+    font-size: 13px;
 }

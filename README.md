@@ -22,6 +22,9 @@ It can also watch those rates in the background and message you in **Telegram** 
   moved between coins through swaps isn't counted twice (unlike CoinMarketCap's cost basis). Portfolios that
   aren't investments (e.g. savings) can be unchecked in the settings. Amounts stay hidden
   when you hide balances in CoinMarketCap.
+- 💼 **Where your coins sit** — the Earn column marks the exchange (or wallet) each coin is held on and estimates
+  your yearly income now vs. at the best rate (`≈ $12/yr → $141/yr`). Each CoinMarketCap portfolio is mapped to an
+  exchange in the settings (guessed from its name until you pick).
 - 🔔 **Telegram alerts** — get a message when the best rate for one of your coins goes up.
 - ⚡ **No login, no API keys** — only public / website endpoints are used.
 - 🔒 **Private** — everything runs locally in your browser; nothing is sent anywhere except to the exchanges and,

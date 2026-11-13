@@ -1,16 +1,20 @@
 import {
     CHECK_NOW_MESSAGE,
+    HOLDINGS_MESSAGE,
     PAGE_SETTINGS_CHANGED_MESSAGE,
     PAGE_SETTINGS_MESSAGE,
     PORTFOLIO_MESSAGE,
     PORTFOLIO_NAMES_MESSAGE,
+    type HoldingsMessage,
     type PageSettings,
     type PortfolioMessage,
     type PortfolioNamesMessage
 } from '@/lib/messages';
 import { checkRates } from '@/lib/notifier';
 import { rememberPortfolioSymbols } from '@/lib/portfolio';
-import { getSettings, knownPortfoliosItem, settingsItem } from '@/lib/storage';
+import {
+    getSettings, holdingsItem, knownPortfoliosItem, settingsItem
+} from '@/lib/storage';
 import { FETCH_MESSAGE, fetchDirect, type FetchRequest } from '@/utils/request';
 
 const CHECK_ALARM = 'check-rates';
@@ -27,8 +31,8 @@ async function scheduleCheck() {
 
 /** Only what the CMC page needs — the bot token and chat id never leave the worker. */
 async function getPageSettings(): Promise<PageSettings> {
-    const { excludedPortfolios } = await getSettings();
-    return { excludedPortfolios };
+    const { excludedPortfolios, portfolioExchanges } = await getSettings();
+    return { excludedPortfolios, portfolioExchanges };
 }
 
 async function notifyCmcTabs() {
@@ -65,6 +69,16 @@ export default defineBackground(() => {
 
             if (Array.isArray(names) && names.every((name) => typeof name === 'string')) {
                 knownPortfoliosItem.setValue(names);
+            }
+
+            return false;
+        }
+
+        if (message?.type === HOLDINGS_MESSAGE) {
+            const { holdings } = message as HoldingsMessage;
+
+            if (holdings && typeof holdings === 'object') {
+                holdingsItem.setValue(holdings);
             }
 
             return false;
