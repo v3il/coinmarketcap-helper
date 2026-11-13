@@ -116,15 +116,24 @@ export function main() {
         });
     };
 
-    // A transaction was added: reload CMC's view of that portfolio (re-select it) and our own data.
-    function refreshAfterTransaction(portfolioName: string) {
+    // A transaction was added: reload CMC's current view (re-select the current sidebar item) and our own data.
+    function refreshAfterTransaction() {
         invalidateHoldings();
         invalidateTotals();
-        const item = [...document.querySelectorAll('[data-rbd-draggable-id] .name')]
-            .find((el) => el.textContent?.trim() === portfolioName) as HTMLElement | undefined;
 
-        if (item) {
-            item.click();
+        // The selected sidebar item (a portfolio or the overview) is the one styled differently from its siblings.
+        const items = [...document.querySelectorAll<HTMLElement>('[data-rbd-draggable-id]')];
+        const counts = new Map<string, number>();
+        items.forEach((item) => counts.set(item.className, (counts.get(item.className) ?? 0) + 1));
+        const selected = items.length > 1 ? items.find((item) => counts.get(item.className) === 1) : undefined;
+        const overview = [...document.querySelectorAll<HTMLElement>('div, span, p')].find((el) => (
+            el.childElementCount === 0 && el.textContent?.trim() === 'Overview'
+            && !el.closest('header, nav, [data-test^="global-header"]')
+        ));
+        const target = selected?.querySelector<HTMLElement>('.name') ?? overview;
+
+        if (target) {
+            target.click();
         } else {
             window.location.reload();
         }

@@ -3,7 +3,8 @@ import { h } from './dom';
 import { TABLE_SELECTOR } from './render';
 
 // "Set amount": the user types the coin amount they actually have (e.g. after staking rewards) and the extension
-// adds a buy/sell transaction for the difference at the current price. Single-portfolio tables only.
+// adds a buy/sell transaction for the difference at the current price. On a single-portfolio table it edits that
+// portfolio; on the overview, where a coin may sit in several portfolios, the user picks which one.
 
 const PORTFOLIO_SYMBOL_SELECTOR = '.coin-item-symbol';
 const OVERVIEW_SYMBOL_SELECTOR = '.symbol-name';
@@ -17,13 +18,18 @@ export interface AmountEditorContext {
     snapshot: PortfolioSnapshot;
     /** CMC hides balances: don't prefill the current amount. */
     hidden: boolean;
-    /** Called after a transaction was added, with the portfolio's name. */
-    onAdded: (portfolioName: string) => void;
+    /** Called after a transaction was added, to reload the current view. */
+    onAdded: () => void;
 }
 
 interface Portfolio {
     id: string;
     name: string;
+}
+
+/** A coin's position in one portfolio, as offered in the editor. */
+interface Place extends Portfolio {
+    balance: number;
 }
 
 /**
@@ -55,6 +61,13 @@ function identifyPortfolio(symbols: string[], snapshot: PortfolioSnapshot): Port
     return { id: best.id, name: best.name };
 }
 
+/** The overview's Balance cell, found by its column header. */
+function findBalanceCell(table: HTMLTableElement, row: Element): HTMLTableCellElement | null {
+    const headers = [...table.querySelectorAll('thead th')].map((th) => th.textContent?.trim().toLowerCase());
+    const index = headers.indexOf('balance');
+    return index >= 0 ? row.querySelectorAll<HTMLTableCellElement>(':scope > td')[index] ?? null : null;
+}
+
 /** The Holdings cell: the one with a "<amount> <SYMBOL>" line. */
 function findHoldingsCell(row: Element, symbol: string): HTMLTableCellElement | null {
     const pattern = new RegExp(`^[\\d*][\\d.,*\\s]*\\s${symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
@@ -71,28 +84,49 @@ function closeEditors() {
     document.querySelectorAll(`.${EDITOR_CLASS}`).forEach((editor) => editor.remove());
 }
 
-function openEditor(cell: HTMLElement, symbol: string, portfolio: Portfolio, context: AmountEditorContext) {
+/** Places (portfolio + exact amount) where a coin is held, from CMC's dashboard summary. */
+function placesOf(symbol: string, snapshot: PortfolioSnapshot): Place[] {
+    return (snapshot.holdings.get(symbol) ?? [])
+        .filter((holding) => holding.portfolioId)
+        .map((holding) => ({ id: holding.portfolioId!, name: holding.portfolio, balance: holding.balance ?? 0 }));
+}
+
+function openEditor(cell: HTMLElement, symbol: string, places: Place[], context: AmountEditorContext) {
     closeEditors();
 
     const coin = context.snapshot.coins.get(symbol);
-    const holding = context.snapshot.holdings.get(symbol)?.find((place) => place.portfolioId === portfolio.id);
-    const current = holding?.balance ?? 0;
     const ticker = symbol.toUpperCase();
 
-    if (!coin || !coin.price) {
+    if (!coin || !coin.price || places.length === 0) {
         return;
     }
+
+    let place = places[0];
+    // Whole coins only (fractions get rounded anyway); the difference is taken from the exact current amount,
+    // so after adding it the portfolio holds exactly the typed number.
+    const prefill = () => (context.hidden ? '' : String(Math.round(place.balance)));
 
     const input = h('input', {
         type: 'text',
         inputmode: 'numeric',
         autocomplete: 'off',
         placeholder: `New ${ticker} amount`,
-        'aria-label': `New ${ticker} amount in ${portfolio.name}`
+        'aria-label': `New ${ticker} amount`
     });
-    // Whole coins only (fractions get rounded anyway); the difference is taken from the exact current amount,
-    // so after adding it the portfolio holds exactly the typed number.
-    input.value = context.hidden ? '' : String(Math.round(current));
+    input.value = prefill();
+
+    // Several portfolios hold this coin (overview): pick which one to change.
+    const picker = places.length > 1
+        ? h(
+            'select',
+            { class: `${EDITOR_CLASS}__portfolio`, 'aria-label': 'Portfolio' },
+            ...places.map((item) => h(
+                'option',
+                { value: item.id },
+                context.hidden ? item.name : `${item.name} · ${Math.round(item.balance)} ${ticker}`
+            ))
+        )
+        : null;
 
     const status = h('div', { class: `${EDITOR_CLASS}__status` });
     const confirm = h('button', { type: 'button', class: `${EDITOR_CLASS}__confirm`, hidden: '' }, 'Add');
@@ -100,6 +134,7 @@ function openEditor(cell: HTMLElement, symbol: string, portfolio: Portfolio, con
     const editor = h(
         'div',
         { class: EDITOR_CLASS, role: 'dialog', 'aria-label': `Set ${ticker} amount` },
+        picker,
         h('div', { class: `${EDITOR_CLASS}__row` }, input, confirm, cancel),
         status
     );
@@ -124,7 +159,7 @@ function openEditor(cell: HTMLElement, symbol: string, portfolio: Portfolio, con
             return;
         }
 
-        const diff = Number(formatAmount(value - current));
+        const diff = Number(formatAmount(value - place.balance));
 
         if (diff === 0) {
             status.textContent = 'Same as now — nothing to add';
@@ -133,7 +168,8 @@ function openEditor(cell: HTMLElement, symbol: string, portfolio: Portfolio, con
 
         pending = { type: diff > 0 ? 'buy' : 'sell', amount: formatAmount(Math.abs(diff)) };
         status.textContent = `${pending.type === 'buy' ? 'Buy' : 'Sell'} ${pending.amount} ${ticker} `
-            + `@ $${formatPrice(coin.price)} ≈ $${(Math.abs(diff) * coin.price).toFixed(2)}`;
+            + `@ $${formatPrice(coin.price)} ≈ $${(Math.abs(diff) * coin.price).toFixed(2)}`
+            + `${places.length > 1 ? ` in ${place.name}` : ''}`;
         confirm.hidden = false;
     };
 
@@ -147,7 +183,7 @@ function openEditor(cell: HTMLElement, symbol: string, portfolio: Portfolio, con
         try {
             await addTransaction({
                 type: pending.type,
-                portfolioId: portfolio.id,
+                portfolioId: place.id,
                 coinId: coin.id,
                 amount: pending.amount,
                 price: String(coin.price),
@@ -156,7 +192,7 @@ function openEditor(cell: HTMLElement, symbol: string, portfolio: Portfolio, con
             status.textContent = 'Added ✓';
             setTimeout(() => {
                 editor.remove();
-                context.onAdded(portfolio.name);
+                context.onAdded();
             }, 700);
         } catch (error) {
             status.textContent = (error as Error).message;
@@ -167,6 +203,12 @@ function openEditor(cell: HTMLElement, symbol: string, portfolio: Portfolio, con
     };
 
     input.addEventListener('input', preview);
+    picker?.addEventListener('change', () => {
+        place = places.find((item) => item.id === picker.value) ?? places[0];
+        input.value = prefill();
+        preview();
+        input.focus();
+    });
     input.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') submit();
         if (event.key === 'Escape') editor.remove();
@@ -186,35 +228,54 @@ function openEditor(cell: HTMLElement, symbol: string, portfolio: Portfolio, con
 }
 
 /**
- * Adds a ✎ button to the Holdings cell of each row in a single-portfolio table. Idempotent; the button and the
- * editor are absolutely positioned, so the table layout never changes.
+ * Adds a ✎ over the amount cell of each row: Holdings on a single-portfolio table, Balance on the overview.
+ * Idempotent; the button and the editor are absolutely positioned, so the table layout never changes.
  */
 export function renderAmountEditors(context: AmountEditorContext) {
     const table = document.querySelector<HTMLTableElement>(TABLE_SELECTOR);
 
-    if (!table || table.querySelector(OVERVIEW_SYMBOL_SELECTOR)) {
+    if (!table) {
         return;
     }
 
+    const overview = !!table.querySelector(OVERVIEW_SYMBOL_SELECTOR);
     const rows = [...table.querySelectorAll('tbody tr')];
-    const symbolOf = (row: Element) => row.querySelector(PORTFOLIO_SYMBOL_SELECTOR)?.textContent
-        ?.trim().toLowerCase();
-    const symbols = rows.map(symbolOf).filter((symbol): symbol is string => !!symbol);
-    const portfolio = identifyPortfolio(symbols, context.snapshot);
+    const symbolSelector = overview ? OVERVIEW_SYMBOL_SELECTOR : PORTFOLIO_SYMBOL_SELECTOR;
+    const symbolOf = (row: Element) => row.querySelector(symbolSelector)?.textContent?.trim().toLowerCase();
 
-    if (!portfolio) {
-        return;
+    // Single-portfolio table: every row edits that portfolio. Overview: each coin's own portfolios.
+    let portfolio: Portfolio | null = null;
+
+    if (!overview) {
+        const symbols = rows.map(symbolOf).filter((symbol): symbol is string => !!symbol);
+        portfolio = identifyPortfolio(symbols, context.snapshot);
+
+        if (!portfolio) {
+            return;
+        }
     }
 
     rows.forEach((row) => {
         const symbol = symbolOf(row);
-        const cell = symbol ? findHoldingsCell(row, symbol) : null;
+        const cell = symbol && (overview ? findBalanceCell(table, row) : findHoldingsCell(row, symbol));
 
         if (!symbol || !cell) {
             return;
         }
 
-        const key = `${portfolio.id}|${symbol}|${context.hidden}`;
+        const all = placesOf(symbol, context.snapshot);
+        const places = portfolio ? all.filter((item) => item.id === portfolio!.id) : all;
+
+        if (portfolio && places.length === 0) {
+            // Held here but sold to zero (not in CMC's holdings): editing starts from 0.
+            places.push({ ...portfolio, balance: 0 });
+        }
+
+        if (places.length === 0) {
+            return;
+        }
+
+        const key = `${places.map((item) => `${item.id}:${item.balance}`).join(',')}|${symbol}|${context.hidden}`;
         const existing = cell.querySelector<HTMLButtonElement>(`:scope > .${BUTTON_CLASS}`);
 
         if (existing?.dataset.key === key) {
@@ -233,7 +294,7 @@ export function renderAmountEditors(context: AmountEditorContext) {
         button.addEventListener('click', (event) => {
             event.preventDefault();
             event.stopPropagation();
-            openEditor(cell, symbol, portfolio, context);
+            openEditor(cell, symbol, places, context);
         });
         ['mousedown', 'pointerdown'].forEach((type) => {
             button.addEventListener(type, (event) => event.stopPropagation());
