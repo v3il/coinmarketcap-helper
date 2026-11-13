@@ -1,19 +1,45 @@
-import { CHECK_NOW_MESSAGE, PORTFOLIO_MESSAGE, type PortfolioMessage } from '@/lib/messages';
+import {
+    CHECK_NOW_MESSAGE,
+    PAGE_SETTINGS_CHANGED_MESSAGE,
+    PAGE_SETTINGS_MESSAGE,
+    PORTFOLIO_MESSAGE,
+    PORTFOLIO_NAMES_MESSAGE,
+    type PageSettings,
+    type PortfolioMessage,
+    type PortfolioNamesMessage
+} from '@/lib/messages';
 import { checkRates } from '@/lib/notifier';
 import { rememberPortfolioSymbols } from '@/lib/portfolio';
-import { settingsItem } from '@/lib/storage';
+import { getSettings, knownPortfoliosItem, settingsItem } from '@/lib/storage';
 import { FETCH_MESSAGE, fetchDirect, type FetchRequest } from '@/utils/request';
 
 const CHECK_ALARM = 'check-rates';
 
 async function scheduleCheck() {
-    const { intervalHours } = await settingsItem.getValue();
+    const { intervalHours } = await getSettings();
     const periodInMinutes = Math.max(1, intervalHours) * 60;
     const existing = await chrome.alarms.get(CHECK_ALARM);
 
     if (existing?.periodInMinutes !== periodInMinutes) {
         await chrome.alarms.create(CHECK_ALARM, { delayInMinutes: 1, periodInMinutes });
     }
+}
+
+/** Only what the CMC page needs — the bot token and chat id never leave the worker. */
+async function getPageSettings(): Promise<PageSettings> {
+    const { excludedPortfolios } = await getSettings();
+    return { excludedPortfolios };
+}
+
+async function notifyCmcTabs() {
+    const tabs = await chrome.tabs.query({ url: 'https://coinmarketcap.com/*' });
+
+    tabs.forEach((tab) => {
+        if (tab.id !== undefined) {
+            // Tabs without the content script (not loaded yet) just reject; nothing to update there.
+            chrome.tabs.sendMessage(tab.id, { type: PAGE_SETTINGS_CHANGED_MESSAGE }).catch(() => {});
+        }
+    });
 }
 
 export default defineBackground(() => {
@@ -34,6 +60,21 @@ export default defineBackground(() => {
             return false;
         }
 
+        if (message?.type === PORTFOLIO_NAMES_MESSAGE) {
+            const { names } = message as PortfolioNamesMessage;
+
+            if (Array.isArray(names) && names.every((name) => typeof name === 'string')) {
+                knownPortfoliosItem.setValue(names);
+            }
+
+            return false;
+        }
+
+        if (message?.type === PAGE_SETTINGS_MESSAGE) {
+            getPageSettings().then(sendResponse);
+            return true;
+        }
+
         return false;
     });
 
@@ -45,6 +86,9 @@ export default defineBackground(() => {
 
     chrome.action.onClicked.addListener(() => chrome.runtime.openOptionsPage());
 
-    settingsItem.watch(() => scheduleCheck());
+    settingsItem.watch(() => {
+        scheduleCheck();
+        notifyCmcTabs();
+    });
     scheduleCheck();
 });

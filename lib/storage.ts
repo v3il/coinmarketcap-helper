@@ -8,14 +8,22 @@ export interface Settings {
     /** Notify when a coin's best APR grows by at least this many percentage points. */
     minIncrease: number;
     intervalHours: number;
+    /** CMC portfolio names left out of the totals banner (e.g. savings), matched case-insensitively. */
+    excludedPortfolios: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
     botToken: '',
     chatId: '',
     minIncrease: 1,
-    intervalHours: 4
+    intervalHours: 4,
+    excludedPortfolios: []
 };
+
+/** Settings with defaults filled in for keys added after the user first saved them. */
+export async function getSettings(): Promise<Settings> {
+    return { ...DEFAULT_SETTINGS, ...await settingsItem.getValue() };
+}
 
 export interface BestRate {
     apr: number;
@@ -44,5 +52,8 @@ export type CoinSnapshot = Record<string, BestRate>;
  * Kept per exchange so an exchange that's temporarily down can carry its last known rate.
  */
 export const knownRatesItem = storage.defineItem<Record<string, CoinSnapshot>>('local:knownRates', { fallback: {} });
+
+/** Names of the user's CMC portfolios, as last seen on coinmarketcap.com (for the settings page). */
+export const knownPortfoliosItem = storage.defineItem<string[]>('local:knownPortfolios', { fallback: [] });
 
 export const lastCheckItem = storage.defineItem<CheckStatus | null>('local:lastCheck', { fallback: null });

@@ -19,7 +19,8 @@ It can also watch those rates in the background and message you in **Telegram** 
   the best fixed-term rate in green.
 - 📊 **Portfolio totals** — a banner at the top of the portfolio page with net invested, current value and all-time
   profit/loss across all your portfolios, on every portfolio page. Net invested = value − profit/loss, so money
-  moved between coins through swaps isn't counted twice (unlike CoinMarketCap's cost basis). Amounts stay hidden
+  moved between coins through swaps isn't counted twice (unlike CoinMarketCap's cost basis). Portfolios that
+  aren't investments (e.g. savings) can be unchecked in the settings. Amounts stay hidden
   when you hide balances in CoinMarketCap.
 - 🔔 **Telegram alerts** — get a message when the best rate for one of your coins goes up.
 - ⚡ **No login, no API keys** — only public / website endpoints are used.

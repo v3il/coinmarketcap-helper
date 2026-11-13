@@ -1,3 +1,6 @@
+import {
+    PAGE_SETTINGS_MESSAGE, PORTFOLIO_NAMES_MESSAGE, type PageSettings, type PortfolioNamesMessage
+} from '@/lib/messages';
 import { fetchPortfolios, fetchPortfolioTotals, sumTotals, type PortfolioTotals } from './cmcApi';
 import { h } from './dom';
 import { TABLE_SELECTOR } from './render';
@@ -6,10 +9,28 @@ const BANNER_CLASS = 'cmc-helper-totals';
 const CACHE_TTL_MS = 2 * 60 * 1000;
 /** After a failed load, wait this long before trying again. */
 const RETRY_AFTER_MS = 30 * 1000;
-
 let cache: { at: number; ttl: number; promise: Promise<PortfolioTotals | null> } | null = null;
 
-/** Totals across all portfolios CMC counts in the overall balance (CMC itself shows P/L only per portfolio). */
+/** Lower-case names of portfolios the user excluded from the totals in the extension settings. */
+async function getExcludedPortfolios(): Promise<Set<string>> {
+    const response: PageSettings | undefined = await chrome.runtime.sendMessage({ type: PAGE_SETTINGS_MESSAGE });
+    return new Set((response?.excludedPortfolios ?? []).map((name) => name.trim().toLowerCase()));
+}
+
+/** Forget loaded totals and re-render the banner on the next update (e.g. after the settings changed). */
+export function invalidateTotals() {
+    cache = null;
+    const banner = document.querySelector<HTMLElement>(`.${BANNER_CLASS}`);
+
+    if (banner) {
+        delete banner.dataset.key;
+    }
+}
+
+/**
+ * Totals across the portfolios CMC counts in the overall balance, minus the ones excluded in the settings
+ * (CMC itself shows P/L only per portfolio).
+ */
 function loadTotals(): Promise<PortfolioTotals | null> {
     if (cache && Date.now() - cache.at < cache.ttl) {
         return cache.promise;
@@ -18,7 +39,13 @@ function loadTotals(): Promise<PortfolioTotals | null> {
     const entry = { at: Date.now(), ttl: CACHE_TTL_MS, promise: Promise.resolve<PortfolioTotals | null>(null) };
 
     entry.promise = (async () => {
-        const portfolios = (await fetchPortfolios()).filter((portfolio) => portfolio.counted);
+        const [all, excluded] = await Promise.all([fetchPortfolios(), getExcludedPortfolios()]);
+        // Let the settings page offer these portfolios as checkboxes (names only).
+        const names: PortfolioNamesMessage = { type: PORTFOLIO_NAMES_MESSAGE, names: all.map((p) => p.name) };
+        chrome.runtime.sendMessage(names).catch(() => {});
+
+        const portfolios = all.filter((portfolio) => portfolio.counted
+            && !excluded.has(portfolio.name.trim().toLowerCase()));
         return sumTotals(await Promise.all(portfolios.map((portfolio) => fetchPortfolioTotals(portfolio.id))));
     })().catch((error) => {
         console.warn('[cmc-helper] Failed to load portfolio totals', error);

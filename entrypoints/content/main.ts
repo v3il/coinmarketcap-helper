@@ -1,8 +1,8 @@
 import { EXCHANGES } from '@/lib/exchanges';
-import { PORTFOLIO_MESSAGE, type PortfolioMessage } from '@/lib/messages';
+import { PAGE_SETTINGS_CHANGED_MESSAGE, PORTFOLIO_MESSAGE, type PortfolioMessage } from '@/lib/messages';
 import { loadRates, type LoadedRates } from '@/lib/rates';
 import { getPortfolioTableSymbols, hasPortfolioTable, renderEarnColumn } from './render';
-import { renderTotalsBanner } from './totals';
+import { invalidateTotals, renderTotalsBanner } from './totals';
 import './styles.css';
 
 const isPortfolioPage = () => window.location.pathname.startsWith('/portfolio-tracker');
@@ -51,6 +51,14 @@ export function main() {
         childList: true,
         characterData: true,
         subtree: true
+    });
+
+    // Settings changed in the extension (e.g. excluded portfolios): recompute the totals banner.
+    chrome.runtime.onMessage.addListener((message: { type?: string }) => {
+        if (message?.type === PAGE_SETTINGS_CHANGED_MESSAGE) {
+            invalidateTotals();
+            scheduleUpdate();
+        }
     });
 
     scheduleUpdate();

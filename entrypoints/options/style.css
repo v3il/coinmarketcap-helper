@@ -156,3 +156,29 @@ section > p:last-child {
     color: var(--muted);
     word-break: break-word;
 }
+
+.checks {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px 16px;
+}
+
+label.check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+
+    span {
+        font-weight: 400;
+    }
+
+    input {
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        padding: 0;
+        accent-color: var(--accent);
+        cursor: pointer;
+    }
+}
