@@ -69,18 +69,21 @@
     position: relative;
 }
 
+/* Covers the whole Holdings cell; shows a centered pencil on hover. */
 .cmc-helper-edit {
     position: absolute;
-    top: 50%;
-    left: 4px;
-    transform: translateY(-50%);
-    padding: 2px 6px;
-    border: 1px solid rgba(128, 138, 157, 0.4);
-    border-radius: 6px;
-    background: transparent;
-    color: inherit;
-    font-size: 13px;
-    line-height: 16px;
+    inset: -1px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    border: 1px solid rgba(128, 138, 157, 0.35);
+    border-radius: 8px;
+    /* Solid, so the amount underneath doesn't show through. */
+    background: #222531;
+    color: #e6e8ee;
+    font-size: 20px;
     cursor: pointer;
     opacity: 0;
     transition: opacity 0.15s;
@@ -88,7 +91,7 @@
 
 .cmc-helper-editable:hover .cmc-helper-edit,
 .cmc-helper-edit:focus-visible {
-    opacity: 0.8;
+    opacity: 1;
 }
 
 .cmc-helper-editor {
