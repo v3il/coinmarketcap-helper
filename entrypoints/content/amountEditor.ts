@@ -80,6 +80,9 @@ const formatAmount = (value: number) => value.toFixed(10).replace(/\.?0+$/, '');
 
 const formatPrice = (value: number) => (value >= 1 ? value.toFixed(2) : value.toPrecision(4));
 
+/** Last state of the "Free" checkbox, kept while the tab is open (you usually sync several rewards in a row). */
+let lastFree = false;
+
 function closeEditors() {
     document.querySelectorAll(`.${EDITOR_CLASS}`).forEach((editor) => editor.remove());
 }
@@ -128,6 +131,19 @@ function openEditor(cell: HTMLElement, symbol: string, places: Place[], context:
         )
         : null;
 
+    // Free coins (staking rewards, airdrops): recorded as a buy at $0, so "invested" doesn't grow.
+    const free = h('input', { type: 'checkbox', 'aria-label': 'Free coins, price $0' });
+    free.checked = lastFree;
+    const freeLabel = h(
+        'label',
+        {
+            class: `${EDITOR_CLASS}__free`,
+            title: 'Free coins (staking rewards, airdrops): added as a buy at $0, so invested doesn\'t grow'
+        },
+        free,
+        '🎁 Free'
+    );
+
     const status = h('div', { class: `${EDITOR_CLASS}__status` });
     const confirm = h('button', { type: 'button', class: `${EDITOR_CLASS}__confirm`, hidden: '' }, 'Add');
     const cancel = h('button', { type: 'button', class: `${EDITOR_CLASS}__cancel`, title: 'Close (Esc)' }, '✕');
@@ -135,11 +151,11 @@ function openEditor(cell: HTMLElement, symbol: string, places: Place[], context:
         'div',
         { class: EDITOR_CLASS, role: 'dialog', 'aria-label': `Set ${ticker} amount` },
         picker,
-        h('div', { class: `${EDITOR_CLASS}__row` }, input, confirm, cancel),
+        h('div', { class: `${EDITOR_CLASS}__row` }, input, freeLabel, confirm, cancel),
         status
     );
 
-    let pending: { type: 'buy' | 'sell'; amount: string } | null = null;
+    let pending: { type: 'buy' | 'sell'; amount: string; price: string } | null = null;
 
     const preview = () => {
         const text = input.value.replace(/[\s_]/g, '');
@@ -166,10 +182,17 @@ function openEditor(cell: HTMLElement, symbol: string, places: Place[], context:
             return;
         }
 
-        pending = { type: diff > 0 ? 'buy' : 'sell', amount: formatAmount(Math.abs(diff)) };
-        status.textContent = `${pending.type === 'buy' ? 'Buy' : 'Sell'} ${pending.amount} ${ticker} `
-            + `@ $${formatPrice(coin.price)} ≈ $${(Math.abs(diff) * coin.price).toFixed(2)}`
-            + `${places.length > 1 ? ` in ${place.name}` : ''}`;
+        const type = diff > 0 ? 'buy' : 'sell';
+        // "Free" only makes sense for coins coming in.
+        free.disabled = type === 'sell';
+        const isFree = type === 'buy' && free.checked;
+
+        pending = { type, amount: formatAmount(Math.abs(diff)), price: isFree ? '0' : String(coin.price) };
+        const cost = isFree
+            ? 'for free ($0)'
+            : `@ $${formatPrice(coin.price)} ≈ $${(Math.abs(diff) * coin.price).toFixed(2)}`;
+        const where = places.length > 1 ? ` in ${place.name}` : '';
+        status.textContent = `${type === 'buy' ? 'Buy' : 'Sell'} ${pending.amount} ${ticker} ${cost}${where}`;
         confirm.hidden = false;
     };
 
@@ -186,8 +209,8 @@ function openEditor(cell: HTMLElement, symbol: string, places: Place[], context:
                 portfolioId: place.id,
                 coinId: coin.id,
                 amount: pending.amount,
-                price: String(coin.price),
-                note: 'Set amount (CMC Helper)'
+                price: pending.price,
+                note: pending.price === '0' ? 'Set amount: free coins (CMC Helper)' : 'Set amount (CMC Helper)'
             });
             status.textContent = 'Added ✓';
             setTimeout(() => {
@@ -203,6 +226,11 @@ function openEditor(cell: HTMLElement, symbol: string, places: Place[], context:
     };
 
     input.addEventListener('input', preview);
+    free.addEventListener('change', () => {
+        lastFree = free.checked;
+        preview();
+        input.focus();
+    });
     picker?.addEventListener('change', () => {
         place = places.find((item) => item.id === picker.value) ?? places[0];
         input.value = prefill();

@@ -100,7 +100,7 @@
     top: 50%;
     right: 4px;
     transform: translateY(-50%);
-    width: 280px;
+    width: 340px;
     padding: 8px;
     border: 1px solid rgba(128, 138, 157, 0.4);
     border-radius: 10px;
@@ -146,6 +146,26 @@
         color: inherit;
         font-size: 13px;
         cursor: pointer;
+    }
+}
+
+.cmc-helper-editor__free {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+
+    input {
+        margin: 0;
+        accent-color: #16c784;
+        cursor: pointer;
+    }
+
+    &:has(input:disabled) {
+        opacity: 0.4;
+        cursor: default;
     }
 }
 

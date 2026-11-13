@@ -28,7 +28,8 @@ It can also watch those rates in the background and message you in **Telegram** 
   exchange in the settings (guessed from its name until you pick).
 - ✏️ **Set amount** — hover a coin's Holdings (or Balance on the overview), press ✎ and type the whole number of
   coins you have now; the extension adds a buy or sell for the difference at the current price (after you confirm).
-  On the overview, coins held in several portfolios let you pick which one to change.
+  On the overview, coins held in several portfolios let you pick which one to change. Tick 🎁 Free for staking rewards or
+  airdrops: the buy is recorded at $0, so invested doesn't grow.
 - 🔔 **Telegram alerts** — get a message when the best rate for one of your coins goes up.
 - ⚡ **No login, no API keys** — only public / website endpoints are used.
 - 🔒 **Private** — everything runs locally in your browser; nothing is sent anywhere except to the exchanges and,
