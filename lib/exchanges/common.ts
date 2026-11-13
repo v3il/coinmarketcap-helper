@@ -3,6 +3,8 @@ export interface Rate {
     apr: number;
     /** Lock-up term in days; 0 means flexible (redeem any time). */
     days: number;
+    /** For open-ended staking: days it takes to get coins back after unstaking (not a lock-up term). */
+    unbondingDays?: number;
 }
 
 /** Lower-case coin symbol -> available rates, flexible first, then by term. */
@@ -30,25 +32,28 @@ export const parseFraction = (value: string) => Number.parseFloat(value) * 100;
  * Non-positive and unparsable rates are dropped; duplicate terms for a coin keep the highest rate.
  */
 export function toRates<T>(items: T[], pick: (item: T) => [string, Rate][]): CoinRates {
-    const byCoin = new Map<string, Map<number, number>>();
+    const byCoin = new Map<string, Map<number, Rate>>();
 
-    items.flatMap(pick).forEach(([symbol, { apr, days }]) => {
-        if (!Number.isFinite(apr) || apr <= 0 || !Number.isFinite(days)) {
+    items.flatMap(pick).forEach(([symbol, rate]) => {
+        if (!Number.isFinite(rate.apr) || rate.apr <= 0 || !Number.isFinite(rate.days)) {
             return;
         }
 
         const key = symbol.toLowerCase();
-        const terms = byCoin.get(key) ?? new Map<number, number>();
+        const terms = byCoin.get(key) ?? new Map<number, Rate>();
+        const existing = terms.get(rate.days);
 
-        terms.set(days, Math.max(apr, terms.get(days) ?? 0));
+        if (!existing || rate.apr > existing.apr) {
+            terms.set(rate.days, rate);
+        }
+
         byCoin.set(key, terms);
     });
 
     const rates: CoinRates = new Map();
 
     byCoin.forEach((terms, symbol) => {
-        const list = [...terms].map(([days, apr]) => ({ apr, days })).sort((a, b) => a.days - b.days);
-        rates.set(symbol, list);
+        rates.set(symbol, [...terms.values()].sort((a, b) => a.days - b.days));
     });
 
     return rates;

@@ -184,7 +184,7 @@ function createIncome(holdings: Holding[], exchangeRates: ExchangeRates[], conte
     );
 }
 
-function createTip({ apr, days }: Rate, bestFixed: number) {
+function createTip({ apr, days, unbondingDays }: Rate, bestFixed: number) {
     const flexible = days === 0;
     const classes = ['cmc-helper-earn__tip'];
 
@@ -194,5 +194,11 @@ function createTip({ apr, days }: Rate, bestFixed: number) {
         classes.push('cmc-helper-earn__tip--best-fixed');
     }
 
-    return h('span', { class: classes.join(' ') }, `${term(days)}: ${apr.toFixed(2)}%`);
+    const title = unbondingDays ? `No lock-up; withdrawal takes ${unbondingDays} days after unstaking` : '';
+
+    return h(
+        'span',
+        { class: classes.join(' '), ...(title ? { title } : {}) },
+        `${term(days)}: ${apr.toFixed(2)}%`
+    );
 }

@@ -55,10 +55,10 @@ export const ready: Exchange = {
                 return [];
             }
 
-            // Staking can be exited any time, but withdrawing takes the unbonding period (7 days).
-            const days = Math.round((investment.withdrawableAssets?.timelockDuration ?? 0) / SECONDS_PER_DAY);
+            // Open-ended staking (unstake any time); getting the coins back takes the unbonding period (7 days).
+            const unbondingDays = Math.round((investment.withdrawableAssets?.timelockDuration ?? 0) / SECONDS_PER_DAY);
 
-            return [[symbol, { apr: parseFraction(investment.metrics?.totalApy ?? ''), days }]];
+            return [[symbol, { apr: parseFraction(investment.metrics?.totalApy ?? ''), days: 0, unbondingDays }]];
         });
     }
 };

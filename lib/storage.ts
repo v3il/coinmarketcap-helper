@@ -31,6 +31,7 @@ export async function getSettings(): Promise<Settings> {
 export interface BestRate {
     apr: number;
     days: number;
+    unbondingDays?: number;
     exchangeId: string;
     exchangeName: string;
 }

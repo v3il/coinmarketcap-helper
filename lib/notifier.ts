@@ -22,11 +22,14 @@ function bestOf(snapshot: CoinSnapshot): BestRate | null {
     return Object.values(snapshot).reduce<BestRate | null>((best, rate) => (isBetter(rate, best) ? rate : best), null);
 }
 
-const term = (days: number) => (days === 0 ? 'flexible' : `${days} days`);
+const term = (days: number, unbondingDays?: number) => {
+    if (days > 0) return `${days} days`;
+    return unbondingDays ? `flexible, ${unbondingDays}-day withdrawal` : 'flexible';
+};
 
-/** "7.37% · Binance · flexible" */
-const describe = ({ apr, days, exchangeName }: BestRate) => (
-    `${apr.toFixed(2)}% · ${escapeHtml(exchangeName)} · ${term(days)}`
+/** "7.37% · Binance · flexible", "6.50% · Ready · flexible, 7-day withdrawal" */
+const describe = ({ apr, days, unbondingDays, exchangeName }: BestRate) => (
+    `${apr.toFixed(2)}% · ${escapeHtml(exchangeName)} · ${term(days, unbondingDays)}`
 );
 
 const usd = (value: number) => new Intl.NumberFormat('en-US', {
