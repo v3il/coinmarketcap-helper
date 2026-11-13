@@ -43,6 +43,194 @@
     font-weight: 600;
 }
 
+/* The exchange where the user holds the coin. */
+.cmc-helper-earn--held img {
+    border-radius: 50%;
+    outline: 2px solid #f4b860;
+    outline-offset: 2px;
+}
+
+.cmc-helper-earn__income {
+    margin-top: 6px;
+    font-size: 12px;
+    text-align: right;
+    white-space: nowrap;
+    opacity: 0.75;
+}
+
+.cmc-helper-earn__income--better {
+    color: #16c784;
+    font-weight: 600;
+    opacity: 1;
+}
+
+/* "Set amount" on the Holdings cell. Button and editor are absolutely positioned: the row never changes height. */
+.cmc-helper-editable {
+    position: relative;
+}
+
+/* Covers the whole Holdings cell; shows a centered pencil on hover. */
+.cmc-helper-edit {
+    position: absolute;
+    inset: -1px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    border: 1px solid rgba(128, 138, 157, 0.35);
+    border-radius: 8px;
+    /* Solid, so the amount underneath doesn't show through. */
+    background: #222531;
+    color: #e6e8ee;
+    font-size: 20px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.cmc-helper-editable:hover .cmc-helper-edit,
+.cmc-helper-edit:focus-visible {
+    opacity: 1;
+}
+
+.cmc-helper-editor {
+    position: absolute;
+    z-index: 20;
+    top: 50%;
+    right: 4px;
+    transform: translateY(-50%);
+    width: 340px;
+    padding: 8px;
+    border: 1px solid rgba(128, 138, 157, 0.4);
+    border-radius: 10px;
+    background: #171924;
+    color: #e6e8ee;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    text-align: left;
+}
+
+.cmc-helper-editor__portfolio {
+    width: 100%;
+    margin-bottom: 6px;
+    padding: 6px 8px;
+    border: 1px solid rgba(128, 138, 157, 0.4);
+    border-radius: 6px;
+    background: #0f1117;
+    color: inherit;
+    font: inherit;
+    font-size: 13px;
+}
+
+.cmc-helper-editor__row {
+    display: flex;
+    gap: 6px;
+
+    input {
+        flex: 1;
+        min-width: 0;
+        padding: 6px 8px;
+        border: 1px solid rgba(128, 138, 157, 0.4);
+        border-radius: 6px;
+        background: #0f1117;
+        color: inherit;
+        font: inherit;
+        font-size: 13px;
+    }
+
+    button {
+        padding: 6px 10px;
+        border: 1px solid rgba(128, 138, 157, 0.4);
+        border-radius: 6px;
+        background: transparent;
+        color: inherit;
+        font-size: 13px;
+        cursor: pointer;
+    }
+}
+
+.cmc-helper-editor__free {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+
+    input {
+        margin: 0;
+        accent-color: #16c784;
+        cursor: pointer;
+    }
+
+    &:has(input:disabled) {
+        opacity: 0.4;
+        cursor: default;
+    }
+}
+
+.cmc-helper-editor__confirm {
+    border-color: #3861fb !important;
+    background: #3861fb !important;
+    color: #fff !important;
+    font-weight: 600;
+
+    &:disabled {
+        opacity: 0.5;
+    }
+}
+
+.cmc-helper-editor__status {
+    margin-top: 6px;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.cmc-helper-editor__status--error {
+    color: #f28b82;
+    opacity: 1;
+}
+
+.cmc-helper-totals {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px 32px;
+    margin: 0 0 16px;
+    padding: 14px 20px;
+    border: 1px solid rgba(128, 138, 157, 0.25);
+    border-radius: 12px;
+    background: rgba(128, 138, 157, 0.06);
+
+    &[hidden] {
+        display: none;
+    }
+}
+
+.cmc-helper-totals__stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cmc-helper-totals__label {
+    font-size: 12px;
+    opacity: 0.6;
+}
+
+.cmc-helper-totals__value {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.cmc-helper-totals__value--up {
+    color: #16c784;
+}
+
+.cmc-helper-totals__value--down {
+    color: #ea3943;
+}
+
 div:has(> div > div[id^="google_ads_iframe"]), /* Ads */
 .cmc-sponsor, /* Ads */
 [cmc-ui-portal] .popover-base:has([data-scope="base-item-wrapper"]) { /* AI floating */

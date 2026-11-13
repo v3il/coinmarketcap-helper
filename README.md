@@ -9,17 +9,27 @@ from several exchanges for every coin in your portfolio and showing them right i
 
 It can also watch those rates in the background and message you in **Telegram** when a better rate shows up.
 
-> ⚠️ **Note:** This is an **early version**. The extension is still evolving and will be expanded with new features,
-> improvements, and additional data sources over time.
-
 ---
 
 ## ✨ Key Features
-- 💰 **Multi-exchange support** — **Binance**, **Bybit**, **OKX**, **MEXC** and **WhiteBIT**.
+- 💰 **Multi-exchange support** — **Binance**, **Bybit**, **OKX**, **MEXC** and **WhiteBIT**, plus native
+  staking in the **Ready** wallet (STRK and BTC tokens on Starknet).
 - ⏳ **Flexible and fixed-term rates** — each rate is shown with its term: `∞` for flexible (redeem any time),
   `7d`, `30d`… for fixed-term products (up to 60 days on Binance and WhiteBIT).
 - 🏆 **Best offer first** — exchanges are sorted by their best rate; the best flexible rate is highlighted in blue,
   the best fixed-term rate in green.
+- 📊 **Portfolio totals** — a banner at the top of the portfolio page with net invested, current value and all-time
+  profit/loss across all your portfolios, on every portfolio page. Net invested = value − profit/loss, so money
+  moved between coins through swaps isn't counted twice (unlike CoinMarketCap's cost basis). Portfolios that
+  aren't investments (e.g. savings) can be unchecked in the settings. Amounts stay hidden
+  when you hide balances in CoinMarketCap.
+- 💼 **Where your coins sit** — the Earn column marks the exchange (or wallet) each coin is held on and estimates
+  your yearly income now vs. at the best rate (`≈ $12/yr → $141/yr`). Each CoinMarketCap portfolio is mapped to an
+  exchange in the settings (guessed from its name until you pick).
+- ✏️ **Set amount** — hover a coin's Holdings (or Balance on the overview), press ✎ and type the whole number of
+  coins you have now; the extension adds a buy or sell for the difference at the current price (after you confirm).
+  On the overview, coins held in several portfolios let you pick which one to change. Tick 🎁 Free for staking rewards or
+  airdrops: the buy is recorded at $0, so invested doesn't grow.
 - 🔔 **Telegram alerts** — get a message when the best rate for one of your coins goes up.
 - ⚡ **No login, no API keys** — only public / website endpoints are used.
 - 🔒 **Private** — everything runs locally in your browser; nothing is sent anywhere except to the exchanges and,

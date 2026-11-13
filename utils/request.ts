@@ -16,8 +16,15 @@ export type FetchResponse =
 const isContentScript = () => typeof window !== 'undefined' && window.location.protocol !== 'chrome-extension:';
 
 export async function fetchDirect(url: string, init?: RequestInit): Promise<FetchResponse> {
+    // APIs may localize text by the browser language (Ready's product names did); parsing expects English.
+    const headers = new Headers(init?.headers);
+
+    if (!headers.has('Accept-Language')) {
+        headers.set('Accept-Language', 'en');
+    }
+
     try {
-        const response = await fetch(url, init);
+        const response = await fetch(url, { ...init, headers });
 
         if (!response.ok) {
             return { ok: false, error: `HTTP ${response.status} ${response.statusText} for ${url}` };

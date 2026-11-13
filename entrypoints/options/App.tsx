@@ -1,8 +1,17 @@
 import { useEffect, useState } from 'preact/hooks';
+import { EXCHANGES } from '@/lib/exchanges';
+import { guessExchange, NOT_AN_EXCHANGE } from '@/lib/holdings';
 import { CHECK_NOW_MESSAGE } from '@/lib/messages';
 import { getPortfolioSymbols } from '@/lib/portfolio';
 import {
-    DEFAULT_SETTINGS, lastCheckItem, portfolioItem, settingsItem, type CheckStatus, type Settings
+    DEFAULT_SETTINGS,
+    getSettings,
+    knownPortfoliosItem,
+    lastCheckItem,
+    portfolioItem,
+    settingsItem,
+    type CheckStatus,
+    type Settings
 } from '@/lib/storage';
 import { findLatestChat, sendMessage } from '@/lib/telegram';
 
@@ -15,23 +24,27 @@ export function App() {
     const [saved, setSaved] = useState<Settings>(DEFAULT_SETTINGS);
     const [lastCheck, setLastCheck] = useState<CheckStatus | null>(null);
     const [symbols, setSymbols] = useState<string[]>([]);
+    const [knownPortfolios, setKnownPortfolios] = useState<string[]>([]);
     const [notice, setNotice] = useState<Notice>(null);
     const [busy, setBusy] = useState(false);
 
     useEffect(() => {
-        settingsItem.getValue().then((value) => {
+        getSettings().then((value) => {
             setForm(value);
             setSaved(value);
         });
         lastCheckItem.getValue().then(setLastCheck);
         getPortfolioSymbols().then(setSymbols);
+        knownPortfoliosItem.getValue().then(setKnownPortfolios);
 
         const unwatchCheck = lastCheckItem.watch(setLastCheck);
         const unwatchPortfolio = portfolioItem.watch(() => getPortfolioSymbols().then(setSymbols));
+        const unwatchKnown = knownPortfoliosItem.watch(setKnownPortfolios);
 
         return () => {
             unwatchCheck();
             unwatchPortfolio();
+            unwatchKnown();
         };
     }, []);
 
@@ -58,7 +71,9 @@ export function App() {
             botToken: form.botToken.trim(),
             chatId: form.chatId.trim(),
             minIncrease: Math.max(0.1, form.minIncrease || DEFAULT_SETTINGS.minIncrease),
-            intervalHours: Math.min(24, Math.max(1, Math.round(form.intervalHours || DEFAULT_SETTINGS.intervalHours)))
+            intervalHours: Math.min(24, Math.max(1, Math.round(form.intervalHours || DEFAULT_SETTINGS.intervalHours))),
+            excludedPortfolios: form.excludedPortfolios,
+            portfolioExchanges: form.portfolioExchanges
         };
 
         await settingsItem.setValue(value);
@@ -72,6 +87,33 @@ export function App() {
             await save();
             return 'Saved';
         });
+    };
+
+    const isExcluded = (name: string) => form.excludedPortfolios
+        .some((excluded) => excluded.toLowerCase() === name.toLowerCase());
+
+    // Checkboxes save right away: only the excluded list changes, other unsaved edits stay as they are.
+    const onTogglePortfolio = async (name: string, included: boolean) => {
+        const current = await getSettings();
+        const rest = current.excludedPortfolios.filter((excluded) => excluded.toLowerCase() !== name.toLowerCase());
+        const excludedPortfolios = included ? rest : [...rest, name];
+
+        await settingsItem.setValue({ ...current, excludedPortfolios });
+        setForm((value) => ({ ...value, excludedPortfolios }));
+        setSaved((value) => ({ ...value, excludedPortfolios }));
+    };
+
+    /** The exchange chosen for a portfolio, or the guess from its name if the user hasn't chosen yet. */
+    const exchangeOf = (name: string) => form.portfolioExchanges[name] ?? guessExchange(name)?.id ?? NOT_AN_EXCHANGE;
+
+    // Saves right away, like the checkboxes.
+    const onPickExchange = async (name: string, exchangeId: string) => {
+        const current = await getSettings();
+        const portfolioExchanges = { ...current.portfolioExchanges, [name]: exchangeId };
+
+        await settingsItem.setValue({ ...current, portfolioExchanges });
+        setForm((value) => ({ ...value, portfolioExchanges }));
+        setSaved((value) => ({ ...value, portfolioExchanges }));
     };
 
     const onFindChat = () => run(async () => {
@@ -104,6 +146,45 @@ export function App() {
     return (
         <main>
             <h1>CMC Helper</h1>
+
+            <section>
+                <h2>Portfolios</h2>
+                <p class="hint">
+                    Where each CoinMarketCap portfolio is held, so the Earn column can show where a coin earns
+                    now and how much more it could. Guessed from the name until you pick. Uncheck “In totals”
+                    for portfolios that aren’t investments, e.g. savings.
+                </p>
+                {knownPortfolios.length > 0 ? (
+                    <div class="portfolios">
+                        <span class="portfolios__head">Portfolio</span>
+                        <span class="portfolios__head">Held on</span>
+                        <span class="portfolios__head">In totals</span>
+                        {knownPortfolios.map((name) => [
+                            <span key={`${name}-name`} class="portfolios__name">{name}</span>,
+                            <select
+                                key={`${name}-exchange`}
+                                aria-label={`Where ${name} is held`}
+                                value={exchangeOf(name)}
+                                onChange={(e) => onPickExchange(name, e.currentTarget.value)}
+                            >
+                                {EXCHANGES.map((exchange) => (
+                                    <option key={exchange.id} value={exchange.id}>{exchange.name}</option>
+                                ))}
+                                <option value={NOT_AN_EXCHANGE}>Wallet / other</option>
+                            </select>,
+                            <input
+                                key={`${name}-totals`}
+                                type="checkbox"
+                                aria-label={`Count ${name} in totals`}
+                                checked={!isExcluded(name)}
+                                onChange={(e) => onTogglePortfolio(name, e.currentTarget.checked)}
+                            />
+                        ])}
+                    </div>
+                ) : (
+                    <p class="hint">Open your portfolio on CoinMarketCap — the list is picked up from there.</p>
+                )}
+            </section>
 
             <section>
                 <h2>Telegram alerts</h2>
