@@ -1,66 +1,33 @@
-import {
-    fetchPortfolioCoins, fetchPortfolios, fetchPortfolioTotals, sumTotals, type PortfolioTotals
-} from './cmcApi';
+import { fetchPortfolios, fetchPortfolioTotals, sumTotals, type PortfolioTotals } from './cmcApi';
 import { h } from './dom';
-import { getTableView, TABLE_SELECTOR, type TableView } from './render';
+import { TABLE_SELECTOR } from './render';
 
 const BANNER_CLASS = 'cmc-helper-totals';
 const CACHE_TTL_MS = 2 * 60 * 1000;
-/** A portfolio table matches a CMC portfolio if their coin sets overlap at least this much (Jaccard). */
-const MIN_MATCH = 0.6;
+/** After a failed load, wait this long before trying again. */
+const RETRY_AFTER_MS = 30 * 1000;
 
-interface Loaded {
-    label: string;
-    totals: PortfolioTotals;
-}
+let cache: { at: number; ttl: number; promise: Promise<PortfolioTotals | null> } | null = null;
 
-const cache = new Map<string, { at: number; promise: Promise<Loaded | null> }>();
-
-async function loadOverview(): Promise<Loaded> {
-    const portfolios = (await fetchPortfolios()).filter((portfolio) => portfolio.counted);
-    const totals = await Promise.all(portfolios.map((portfolio) => fetchPortfolioTotals(portfolio.id)));
-
-    return { label: 'All portfolios', totals: sumTotals(totals) };
-}
-
-/**
- * The portfolio table doesn't say which portfolio it shows, so find the CMC portfolio whose coins match
- * the table's coins. Coins sold to zero may be in the table but not in CMC's holdings, hence the fuzzy match.
- */
-async function loadPortfolio(symbols: string[]): Promise<Loaded | null> {
-    const [portfolios, coins] = await Promise.all([fetchPortfolios(), fetchPortfolioCoins()]);
-    const shown = new Set(symbols);
-
-    const scored = portfolios.map((portfolio) => {
-        const held = coins.get(portfolio.id) ?? new Set<string>();
-        const common = [...shown].filter((symbol) => held.has(symbol)).length;
-        return { portfolio, score: common / new Set([...shown, ...held]).size };
-    }).sort((a, b) => b.score - a.score);
-
-    const [best, second] = scored;
-
-    // Not confident (e.g. two portfolios holding the same coins): show nothing rather than a wrong total.
-    if (!best || best.score < MIN_MATCH || (second && second.score === best.score)) {
-        return null;
+/** Totals across all portfolios CMC counts in the overall balance (CMC itself shows P/L only per portfolio). */
+function loadTotals(): Promise<PortfolioTotals | null> {
+    if (cache && Date.now() - cache.at < cache.ttl) {
+        return cache.promise;
     }
 
-    return { label: best.portfolio.name, totals: await fetchPortfolioTotals(best.portfolio.id) };
-}
+    const entry = { at: Date.now(), ttl: CACHE_TTL_MS, promise: Promise.resolve<PortfolioTotals | null>(null) };
 
-function load(view: TableView): Promise<Loaded | null> {
-    const hit = cache.get(view.key);
-
-    if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
-        return hit.promise;
-    }
-
-    const promise = (view.kind === 'overview' ? loadOverview() : loadPortfolio(view.symbols)).catch((error) => {
+    entry.promise = (async () => {
+        const portfolios = (await fetchPortfolios()).filter((portfolio) => portfolio.counted);
+        return sumTotals(await Promise.all(portfolios.map((portfolio) => fetchPortfolioTotals(portfolio.id))));
+    })().catch((error) => {
         console.warn('[cmc-helper] Failed to load portfolio totals', error);
+        entry.ttl = RETRY_AFTER_MS;
         return null;
     });
 
-    cache.set(view.key, { at: Date.now(), promise });
-    return promise;
+    cache = entry;
+    return entry.promise;
 }
 
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
@@ -71,7 +38,7 @@ const signClass = (value: number) => {
     return '';
 };
 
-function fill(banner: HTMLElement, { label, totals }: Loaded, hidden: boolean) {
+function fill(banner: HTMLElement, totals: PortfolioTotals, hidden: boolean) {
     // When CMC hides balances (****), hide amounts too and keep only the percentage.
     const money = (value: number, signed = false) => {
         if (hidden) return '*****';
@@ -88,7 +55,7 @@ function fill(banner: HTMLElement, { label, totals }: Loaded, hidden: boolean) {
     );
 
     banner.replaceChildren(
-        h('div', { class: `${BANNER_CLASS}__title` }, label),
+        h('div', { class: `${BANNER_CLASS}__title` }, 'All portfolios'),
         stat('Invested', money(totals.invested)),
         stat('Value', money(totals.value)),
         stat('Profit / Loss', hidden ? percent : `${money(totals.pl, true)} (${percent})`, signClass(totals.pl)),
@@ -99,18 +66,16 @@ function fill(banner: HTMLElement, { label, totals }: Loaded, hidden: boolean) {
 }
 
 /**
- * Shows invested / value / profit-loss above every portfolio table, for the overview or the shown portfolio.
- * Idempotent: only re-renders when the table's view (or CMC's hide-balances mode) changes.
+ * Shows invested / value / profit-loss across all portfolios above the portfolio table, on the overview and
+ * on every single-portfolio page. Idempotent: only re-renders when CMC's hide-balances mode changes.
  */
 export function renderTotalsBanners() {
     document.querySelectorAll<HTMLTableElement>(TABLE_SELECTOR).forEach((table) => {
-        const view = getTableView(table);
-        const anchor = table.closest('.portfolio-tablelist-wrapper') ?? table;
-
-        if (!view) {
+        if (!table.querySelector('tbody tr')) {
             return;
         }
 
+        const anchor = table.closest('.portfolio-tablelist-wrapper') ?? table;
         const previous = anchor.previousElementSibling;
         let banner = previous?.classList.contains(BANNER_CLASS) ? previous as HTMLElement : null;
 
@@ -120,7 +85,7 @@ export function renderTotalsBanners() {
         }
 
         const hidden = (table.textContent ?? '').includes('****');
-        const renderKey = `${view.key}|${hidden}`;
+        const renderKey = String(hidden);
 
         if (banner.dataset.key === renderKey) {
             return;
@@ -129,17 +94,23 @@ export function renderTotalsBanners() {
         banner.dataset.key = renderKey;
         const target = banner;
 
-        load(view).then((loaded) => {
-            // The table may have switched to another view meanwhile.
+        loadTotals().then((totals) => {
             if (target.dataset.key !== renderKey) {
                 return;
             }
 
-            if (loaded) {
-                fill(target, loaded, hidden);
-            } else {
-                target.hidden = true;
+            if (totals) {
+                fill(target, totals, hidden);
+                return;
             }
+
+            // Failed: stay hidden, and let a later DOM update retry once the failure cooldown has passed.
+            target.hidden = true;
+            setTimeout(() => {
+                if (target.dataset.key === renderKey) {
+                    delete target.dataset.key;
+                }
+            }, RETRY_AFTER_MS);
         });
     });
 }

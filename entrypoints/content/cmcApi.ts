@@ -33,30 +33,41 @@ const csrfToken = () => document.cookie
     .find((cookie) => cookie.startsWith('x-csrf-token='))
     ?.slice('x-csrf-token='.length);
 
+/** CMC's answer when the CSRF token is missing or stale ("For security reason, this request has been rejected"). */
+const SECURITY_REJECTED = '40110';
+const ATTEMPTS = 3;
+
+const sleep = (ms: number) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
 async function post<T>(path: string, body: object): Promise<T> {
-    const token = csrfToken();
-    const response = await fetch(`${API}${path}`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-            'content-type': 'application/json',
-            platform: 'web',
-            ...(token ? { 'x-csrf-token': token } : {})
-        },
-        body: JSON.stringify(body)
-    });
+    for (let attempt = 1; ; attempt++) {
+        // Re-read the token on every attempt: CMC refreshes it (notably right after page load).
+        const token = csrfToken();
+        const response = await fetch(`${API}${path}`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'content-type': 'application/json',
+                platform: 'web',
+                ...(token ? { 'x-csrf-token': token } : {})
+            },
+            body: JSON.stringify(body)
+        });
+        const json = await response.json().catch(() => null) as ApiResponse<T> | null;
+        const code = String(json?.status?.error_code ?? response.status);
 
-    if (!response.ok) {
-        throw new Error(`CMC ${path}: HTTP ${response.status}`);
+        if (response.ok && code === '0') {
+            return json!.data;
+        }
+
+        const retriable = code === SECURITY_REJECTED || response.status === 403;
+
+        if (!retriable || attempt >= ATTEMPTS) {
+            throw new Error(`CMC ${path}: ${code} ${json?.status?.error_message ?? `HTTP ${response.status}`}`);
+        }
+
+        await sleep(1000 * attempt);
     }
-
-    const json = await response.json() as ApiResponse<T>;
-
-    if (String(json.status?.error_code) !== '0') {
-        throw new Error(`CMC ${path}: ${json.status?.error_code} ${json.status?.error_message}`);
-    }
-
-    return json.data;
 }
 
 export async function fetchPortfolios(): Promise<PortfolioInfo[]> {
@@ -69,23 +80,6 @@ export async function fetchPortfolios(): Promise<PortfolioInfo[]> {
     return data
         .filter((item) => item.portfolioSourceId)
         .map((item) => ({ id: item.portfolioSourceId!, name: item.portfolioName, counted: item.beCounted !== false }));
-}
-
-/** Portfolio id -> lower-case symbols of the coins it holds. */
-export async function fetchPortfolioCoins(): Promise<Map<string, Set<string>>> {
-    const data = await post<{ list: { symbol: string; subItems: { portfolioSourceId: string }[] | null }[] }>(
-        '/asset/v3/portfolio/dashboard/query-summary',
-        {}
-    );
-    const coins = new Map<string, Set<string>>();
-
-    data.list.forEach(({ symbol, subItems }) => (subItems ?? []).forEach(({ portfolioSourceId }) => {
-        const set = coins.get(portfolioSourceId) ?? new Set<string>();
-        set.add(symbol.toLowerCase());
-        coins.set(portfolioSourceId, set);
-    }));
-
-    return coins;
 }
 
 export async function fetchPortfolioTotals(id: string): Promise<PortfolioTotals> {
