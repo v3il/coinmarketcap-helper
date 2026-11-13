@@ -13,7 +13,7 @@ export interface PortfolioInfo {
 }
 
 export interface PortfolioTotals {
-    /** Total spent on buys (USD). */
+    /** Total spent on buys (USD), as CMC reports it ("cost basis"): includes money reinvested through swaps. */
     invested: number;
     /** Current value (USD). */
     value: number;

@@ -44,18 +44,27 @@ function fill(banner: HTMLElement, totals: PortfolioTotals, hidden: boolean) {
         if (hidden) return '*****';
         return `${signed && value > 0 ? '+' : ''}${usd.format(value)}`;
     };
-    const plPercent = totals.invested > 0 ? (totals.pl / totals.invested) * 100 : 0;
+    // CMC's "cost basis" is the sum of all buys, so every swap (sell A, buy B) counts the same money again and
+    // cost basis + P/L != value. Net invested is what was actually put in: value - P/L.
+    const netInvested = totals.value - totals.pl;
+    const plPercent = netInvested > 0 ? (totals.pl / netInvested) * 100 : 0;
     const percent = `${plPercent > 0 ? '+' : ''}${plPercent.toFixed(2)}%`;
 
-    const stat = (name: string, value: string, extraClass = '') => h(
+    const stat = (name: string, value: string, extraClass = '', title = '') => h(
         'div',
-        { class: `${BANNER_CLASS}__stat` },
+        { class: `${BANNER_CLASS}__stat`, ...(title ? { title } : {}) },
         h('span', { class: `${BANNER_CLASS}__label` }, name),
         h('span', { class: `${BANNER_CLASS}__value ${extraClass}`.trim() }, value)
     );
 
     banner.replaceChildren(
-        stat('Invested', money(totals.invested)),
+        stat(
+            'Invested',
+            money(netInvested),
+            '',
+            `Net invested = value − profit/loss.\nTotal buys in CoinMarketCap: ${money(totals.invested)} `
+                + '(counts money reinvested through swaps again).'
+        ),
         stat('Value', money(totals.value)),
         stat('Profit / Loss', hidden ? percent : `${money(totals.pl, true)} (${percent})`, signClass(totals.pl))
     );
