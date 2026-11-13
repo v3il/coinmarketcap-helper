@@ -4,12 +4,12 @@
   "github": {
     "release": true,
     "releaseName" : "cmc-helper@v${version}",
-    "assets": [".output/coinmarketcap-helper@v${version}.zip"],
+    "assets": [".output/*.zip"],
     "releaseNotes": ""
   },
 
   "hooks": {
-    "before:release": "npm run zip && echo Releasing version ${version}"
+    "before:release": "rm -f .output/*.zip && npm run zip && echo Releasing version ${version}"
   },
 
   "npm": {

@@ -2,7 +2,7 @@
   "name": "coinmarketcap-helper",
   "description": "coinmarketcap-helper",
   "private": true,
-  "version": "0.0.4",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
