@@ -22,8 +22,11 @@ function bestOf(snapshot: CoinSnapshot): BestRate | null {
     return Object.values(snapshot).reduce<BestRate | null>((best, rate) => (isBetter(rate, best) ? rate : best), null);
 }
 
+const term = (days: number) => (days === 0 ? 'flexible' : `${days} days`);
+
+/** "7.37% · Binance · flexible" */
 const describe = ({ apr, days, exchangeName }: BestRate) => (
-    `${apr.toFixed(2)}% — ${escapeHtml(exchangeName)}, ${days === 0 ? '∞' : `${days}d`}`
+    `${apr.toFixed(2)}% · ${escapeHtml(exchangeName)} · ${term(days)}`
 );
 
 const usd = (value: number) => new Intl.NumberFormat('en-US', {
@@ -51,11 +54,18 @@ function describePositions(
     });
 }
 
+/**
+ * 🪙 BERA
+ * 🔥 7.37% · Binance · flexible
+ * ↗️ +2.19 pp (was 5.18% · Binance · flexible)
+ * 💼 Bybit: 0.10% → +$12/yr
+ */
 const formatAlerts = (alerts: Alert[]) => [
-    '📈 <b>New best rates</b>',
+    `📈 <b>New best ${alerts.length === 1 ? 'rate' : 'rates'}</b>`,
     ...alerts.map(({ symbol, best, previous, positions }) => [
-        `<b>${escapeHtml(symbol.toUpperCase())}</b>: ${describe(best)}`,
-        `<i>was ${describe(previous)}</i>`,
+        `🪙 <b>${escapeHtml(symbol.toUpperCase())}</b>`,
+        `🔥 <b>${describe(best)}</b>`,
+        `↗️ +${(best.apr - previous.apr).toFixed(2)} pp <i>(was ${describe(previous)})</i>`,
         ...positions
     ].join('\n'))
 ].join('\n\n');
