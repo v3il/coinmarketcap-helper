@@ -1,13 +1,25 @@
 import { EXCHANGES, type Rate } from './exchanges';
 import {
-    currentApr, exchangeResolver, formatCoins, isRealisticRate, withoutExcluded, type ExchangeResolver
+    currentApr, exchangeResolver, formatCoins, isRealisticRate, isShortTerm, withoutExcluded, type ExchangeResolver
 } from './holdings';
 import { getPortfolioSymbols } from './portfolio';
 import { loadRates, type ExchangeRates } from './rates';
 import {
-    getSettings, holdingsItem, knownRatesItem, lastCheckItem, type BestRate, type CheckStatus, type CoinSnapshot
+    getSettings, holdingsItem, knownPromosItem, knownRatesItem, lastCheckItem,
+    type BestRate, type CheckStatus, type CoinSnapshot
 } from './storage';
 import { escapeHtml, sendMessage } from './telegram';
+
+/** A short fixed-term offer (promo) worth a look: announced once, again only if its APR goes up. */
+interface Promo {
+    symbol: string;
+    exchangeName: string;
+    apr: number;
+    days: number;
+    heldOn: string[];
+    /** Coins the user has in the counted portfolios; null when unknown. */
+    balance: number | null;
+}
 
 interface Alert {
     symbol: string;
@@ -95,14 +107,32 @@ const formatAlert = ({ symbol, best, previous, heldOn, positions }: Alert) => [
 /** Telegram allows 4096 characters per message; keep a margin for the header. */
 const MAX_MESSAGE_LENGTH = 3800;
 
-/** Splits alerts into messages that fit Telegram's limit, at coin boundaries. */
-function packAlerts(alerts: Alert[]): Alert[][] {
-    const packs: Alert[][] = [];
-    let current: Alert[] = [];
+/**
+ * 🪙 USDT · MEXC · 2 days at 600.00%
+ * ≈ +3.29% for the term = +3.29 USDT on all your USDT, if the per-user cap allows
+ * 📍 Now on: Binance
+ */
+function formatPromo({ symbol, exchangeName, apr, days, heldOn, balance }: Promo) {
+    const ticker = escapeHtml(symbol.toUpperCase());
+    const forTerm = (apr * days) / 365;
+    const coins = balance ? ` = +${formatCoins((balance * forTerm) / 100)} ${ticker} on all your ${ticker}` : '';
+
+    return [
+        `🪙 <b>${ticker}</b> · ${escapeHtml(exchangeName)} · <b>${days} ${days === 1 ? 'day' : 'days'}`
+            + ` at ${apr.toFixed(2)}%</b>`,
+        `≈ +${forTerm.toFixed(2)}% for the term${coins}, if the per-user cap allows`,
+        ...(heldOn.length > 0 ? [`📍 Now on: ${heldOn.map(escapeHtml).join(', ')}`] : [])
+    ].join('\n');
+}
+
+/** Splits blocks into messages that fit Telegram's limit, at coin boundaries. */
+function pack<T>(items: T[], format: (item: T) => string): T[][] {
+    const packs: T[][] = [];
+    let current: T[] = [];
     let length = 0;
 
-    alerts.forEach((alert) => {
-        const size = formatAlert(alert).length + 2;
+    items.forEach((item) => {
+        const size = format(item).length + 2;
 
         if (current.length > 0 && length + size > MAX_MESSAGE_LENGTH) {
             packs.push(current);
@@ -110,7 +140,7 @@ function packAlerts(alerts: Alert[]): Alert[][] {
             length = 0;
         }
 
-        current.push(alert);
+        current.push(item);
         length += size;
     });
 
@@ -121,11 +151,16 @@ function packAlerts(alerts: Alert[]): Alert[][] {
     return packs;
 }
 
-function formatPack(pack: Alert[], index: number, total: number) {
-    const title = `New best ${pack.length === 1 && total === 1 ? 'rate' : 'rates'}`;
+/** "📈 New best rates (1/2)" + the blocks. */
+function formatPack(title: string, blocks: string[], index: number, total: number) {
     const part = total > 1 ? ` (${index + 1}/${total})` : '';
-    return [`📈 <b>${title}</b>${part}`, ...pack.map(formatAlert)].join('\n\n');
+    return [`<b>${title}</b>${part}`, ...blocks].join('\n\n');
 }
+
+/** Where the coin sits: exchange names, or portfolio names for wallets. */
+const placesOf = (places: { portfolio: string }[], resolve: ExchangeResolver) => (
+    [...new Set(places.map(({ portfolio }) => resolve(portfolio)?.name ?? portfolio))]
+);
 
 async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
     const settings = await getSettings();
@@ -149,6 +184,9 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
     }
 
     const previous = await knownRatesItem.getValue();
+    const previousPromos = await knownPromosItem.getValue();
+    const nextPromos: Record<string, number> = {};
+    const promos: (Promo & { key: string })[] = [];
     const holdings = await holdingsItem.getValue();
     const resolve = exchangeResolver(settings.portfolioExchanges);
     const next: Record<string, CoinSnapshot> = {};
@@ -159,7 +197,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
         const snapshot: CoinSnapshot = {};
 
         (byCoin.get(symbol) ?? []).forEach(({ exchange, rates }) => {
-            // Short promos (MEXC 1–2 days at 600%) aren't rates you can keep coins at: no alerts for them.
+            // Short promos (MEXC 2 days at 600%) aren't rates you can keep coins at: they get their own alerts.
             const best = rates.filter(isRealisticRate)
                 .reduce<Rate | null>((acc, rate) => (isBetter(rate, acc) ? rate : acc), null);
 
@@ -176,18 +214,43 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
             }
         });
 
+        const places = withoutExcluded(holdings[symbol] ?? [], settings.excludedPortfolios);
+        const balance = places.length > 0 && places.every((place) => place.balance !== undefined)
+            ? places.reduce((sum, place) => sum + (place.balance ?? 0), 0)
+            : null;
+
+        const offers = (byCoin.get(symbol) ?? [])
+            .flatMap(({ exchange, rates }) => rates.filter(isShortTerm).map((rate) => ({ exchange, ...rate })));
+
+        offers.forEach(({ exchange, apr, days }) => {
+            const key = `${symbol}|${exchange.id}|${days}`;
+            const known = previousPromos[key];
+            nextPromos[key] = apr;
+
+            if (settings.promoAlerts && apr >= settings.minPromoApr
+                && (known === undefined || apr >= known + settings.minIncrease)) {
+                const heldOn = placesOf(places, resolve);
+                promos.push({ key, symbol, exchangeName: exchange.name, apr, days, heldOn, balance });
+            }
+        });
+
+        // Promos of exchanges that didn't respond are still running as far as we know.
+        Object.entries(previousPromos).forEach(([key, apr]) => {
+            if (failed.some(({ id }) => key.startsWith(`${symbol}|${id}|`))) {
+                nextPromos[key] = apr;
+            }
+        });
+
         const best = bestOf(snapshot);
         const previousBest = bestOf(old);
 
         // New coins only get a baseline; alerts are for increases.
         if (best && previousBest && best.apr >= previousBest.apr + settings.minIncrease) {
             const list = byCoin.get(symbol) ?? [];
-            const places = withoutExcluded(holdings[symbol] ?? [], settings.excludedPortfolios);
-            const exchanges = places.map(({ portfolio }) => resolve(portfolio));
 
             // The coin already sits where the best rate is: nothing to do, no alert (the baseline still moves up).
-            if (!exchanges.some((exchange) => exchange?.id === best.exchangeId)) {
-                const heldOn = [...new Set(places.map(({ portfolio }, i) => exchanges[i]?.name ?? portfolio))];
+            if (!places.some(({ portfolio }) => resolve(portfolio)?.id === best.exchangeId)) {
+                const heldOn = placesOf(places, resolve);
                 const positions = describePositions(symbol, places, best, list, resolve);
                 alerts.push({ symbol, best, previous: previousBest, heldOn, positions });
             }
@@ -198,19 +261,39 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
         }
     });
 
-    let message = `Coins: ${symbols.length}, alerts: ${alerts.length}`;
+    let message = `Coins: ${symbols.length}, alerts: ${alerts.length}`
+        + `${promos.length > 0 ? `, promos: ${promos.length}` : ''}`;
     let ok = true;
 
-    const packs = packAlerts(alerts);
-
-    for (let i = 0; i < packs.length; i++) {
-        try {
-            await sendMessage(settings.botToken, settings.chatId, formatPack(packs[i], i, packs.length));
-        } catch (error) {
-            // Keep the old baselines for the alerts not sent yet, so they're retried on the next check.
-            packs.slice(i).flat().forEach(({ symbol }) => {
+    // Each message knows how to undo its part, so whatever isn't delivered is retried on the next check.
+    const rateTitle = `📈 New best ${alerts.length === 1 ? 'rate' : 'rates'}`;
+    const ratePacks = pack(alerts, formatAlert);
+    const promoTitle = `🎁 New ${promos.length === 1 ? 'promo' : 'promos'}`;
+    const promoPacks = pack(promos, formatPromo);
+    const messages = [
+        ...ratePacks.map((items, i) => ({
+            text: formatPack(rateTitle, items.map(formatAlert), i, ratePacks.length),
+            undo: () => items.forEach(({ symbol }) => {
                 next[symbol] = previous[symbol];
-            });
+            })
+        })),
+        ...promoPacks.map((items, i) => ({
+            text: formatPack(promoTitle, items.map(formatPromo), i, promoPacks.length),
+            undo: () => items.forEach(({ key }) => {
+                if (previousPromos[key] === undefined) {
+                    delete nextPromos[key];
+                } else {
+                    nextPromos[key] = previousPromos[key];
+                }
+            })
+        }))
+    ];
+
+    for (let i = 0; i < messages.length; i++) {
+        try {
+            await sendMessage(settings.botToken, settings.chatId, messages[i].text);
+        } catch (error) {
+            messages.slice(i).forEach(({ undo }) => undo());
             ok = false;
             message = `Failed to send to Telegram: ${(error as Error).message}`;
             break;
@@ -218,6 +301,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
     }
 
     await knownRatesItem.setValue(next);
+    await knownPromosItem.setValue(nextPromos);
 
     return { ok, message, failedExchanges };
 }

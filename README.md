@@ -31,7 +31,8 @@ It can also watch those rates in the background and message you in **Telegram** 
   coins you have now; the extension adds a buy or sell for the difference at the current price (after you confirm).
   On the overview, coins held in several portfolios let you pick which one to change. Tick 🎁 Free for staking rewards or
   airdrops: the buy is recorded at $0, so invested doesn't grow.
-- 🔔 **Telegram alerts** — get a message when the best rate for one of your coins goes up.
+- 🔔 **Telegram alerts** — get a message when the best rate for one of your coins goes up, or a short high-rate promo
+  shows up.
 - ⚡ **No login, no API keys** — only public / website endpoints are used.
 - 🔒 **Private** — everything runs locally in your browser; nothing is sent anywhere except to the exchanges and,
   if you set it up, your own Telegram bot.
@@ -59,8 +60,9 @@ To update, unzip the new release over the old directory and press the reload but
 
 While Chrome is running, the extension checks rates in the background (every 4 hours by default) and messages you
 when the best rate for a coin in your portfolio grows by at least 1 percentage point (configurable).
-Fixed terms shorter than 7 days (short promos) don't count, and there's no alert when the coin already sits on the
-exchange with the new best rate.
+Fixed terms up to 14 days are treated as promos: they don't count as the best rate. Instead, a new promo from 50% APR
+(configurable, can be turned off) gets its own message with the return for the term. There's no "best rate" alert when
+the coin already sits on the exchange with the new best rate.
 
 1. Create a bot with [@BotFather](https://t.me/BotFather) and copy its token.
 2. Click the extension icon to open the settings and paste the token.

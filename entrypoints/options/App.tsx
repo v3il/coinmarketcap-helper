@@ -72,6 +72,10 @@ export function App() {
             chatId: form.chatId.trim(),
             minIncrease: Math.max(0.1, form.minIncrease || DEFAULT_SETTINGS.minIncrease),
             intervalHours: Math.min(24, Math.max(1, Math.round(form.intervalHours || DEFAULT_SETTINGS.intervalHours))),
+            promoAlerts: form.promoAlerts,
+            minPromoApr: Number.isFinite(form.minPromoApr)
+                ? Math.max(0, form.minPromoApr)
+                : DEFAULT_SETTINGS.minPromoApr,
             excludedPortfolios: form.excludedPortfolios,
             portfolioExchanges: form.portfolioExchanges
         };
@@ -191,7 +195,8 @@ export function App() {
                 <h2>Telegram alerts</h2>
                 <p class="hint">
                     Every few hours the extension checks rates for the coins in your portfolio and messages you
-                    when the best rate for a coin goes up.
+                    when the best rate for a coin goes up. Fixed terms up to 14 days are treated as promos: they
+                    don’t count as the best rate and get their own alerts.
                 </p>
 
                 <form onSubmit={onSave}>
@@ -245,6 +250,29 @@ export function App() {
                                 step="1"
                                 value={form.intervalHours}
                                 onInput={(e) => update('intervalHours', e.currentTarget.valueAsNumber)}
+                            />
+                        </label>
+                    </div>
+
+                    <div class="row">
+                        <label class="checkbox">
+                            <input
+                                type="checkbox"
+                                checked={form.promoAlerts}
+                                onChange={(e) => update('promoAlerts', e.currentTarget.checked)}
+                            />
+                            <span>Promo alerts (up to 14 days)</span>
+                        </label>
+
+                        <label>
+                            <span>Promos from, % APR</span>
+                            <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                disabled={!form.promoAlerts}
+                                value={form.minPromoApr}
+                                onInput={(e) => update('minPromoApr', e.currentTarget.valueAsNumber)}
                             />
                         </label>
                     </div>

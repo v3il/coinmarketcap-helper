@@ -184,7 +184,7 @@ function createIncome(symbol: string, holdings: Holding[], exchangeRates: Exchan
         {
             class: better ? 'cmc-helper-earn__income cmc-helper-earn__income--better' : 'cmc-helper-earn__income',
             title: 'Now: the best rate where the coin is held (0% in wallets and without an earn product).'
-                + `${better ? `\nBest: ${describe(income.bestRate)} (fixed terms under 7 days are ignored).` : ''}`
+                + `${better ? `\nBest: ${describe(income.bestRate)} (fixed terms up to 14 days are ignored).` : ''}`
         },
         text
     );

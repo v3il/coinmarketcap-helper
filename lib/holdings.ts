@@ -51,11 +51,14 @@ export function exchangeResolver(choices: PortfolioExchanges = {}): ExchangeReso
     };
 }
 
-/** Fixed terms shorter than this are usually promos (MEXC 1–2 days at 600%), so they don't count as "best". */
-const MIN_FIXED_DAYS_FOR_INCOME = 7;
+/** Fixed terms up to this many days are short promos (MEXC 2 days at 600%): they don't count as "best". */
+export const SHORT_TERM_MAX_DAYS = 14;
 
-/** Flexible, or fixed for at least a week: a rate you can actually keep coins at. */
-export const isRealisticRate = ({ days }: { days: number }) => days === 0 || days >= MIN_FIXED_DAYS_FOR_INCOME;
+/** A short fixed-term offer (1–14 days): a promo, not a rate to keep coins at. */
+export const isShortTerm = ({ days }: { days: number }) => days > 0 && days <= SHORT_TERM_MAX_DAYS;
+
+/** Flexible, or fixed for longer than two weeks: a rate you can actually keep coins at. */
+export const isRealisticRate = (rate: { days: number }) => !isShortTerm(rate);
 
 export interface IncomeRate {
     apr: number;
@@ -63,7 +66,7 @@ export interface IncomeRate {
     exchange: Exchange;
 }
 
-/** The best realistic rate for a coin: flexible, or fixed for at least a week. */
+/** The best realistic rate for a coin: flexible, or fixed for longer than two weeks. */
 export function bestIncomeRate(list: ExchangeRates[] = []): IncomeRate | null {
     let best: IncomeRate | null = null;
 

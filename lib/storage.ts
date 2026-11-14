@@ -8,6 +8,9 @@ export interface Settings {
     /** Notify when a coin's best APR grows by at least this many percentage points. */
     minIncrease: number;
     intervalHours: number;
+    /** Also notify about short promos (fixed terms of 14 days or less) from this APR, %. */
+    promoAlerts: boolean;
+    minPromoApr: number;
     /** CMC portfolio names left out of the totals banner (e.g. savings), matched case-insensitively. */
     excludedPortfolios: string[];
     /** CMC portfolio name -> exchange id or 'none' (wallet / other). Unset portfolios are guessed by name. */
@@ -19,6 +22,8 @@ export const DEFAULT_SETTINGS: Settings = {
     chatId: '',
     minIncrease: 1,
     intervalHours: 4,
+    promoAlerts: true,
+    minPromoApr: 50,
     excludedPortfolios: [],
     portfolioExchanges: {}
 };
@@ -67,5 +72,8 @@ export const holdingsItem = storage.defineItem<Record<string, StoredHolding[]>>(
     'local:holdings',
     { fallback: {} }
 );
+
+/** "symbol|exchangeId|days" -> APR of the short promos already announced; a promo that ends is dropped. */
+export const knownPromosItem = storage.defineItem<Record<string, number>>('local:knownPromos', { fallback: {} });
 
 export const lastCheckItem = storage.defineItem<CheckStatus | null>('local:lastCheck', { fallback: null });

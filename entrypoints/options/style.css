@@ -119,6 +119,28 @@ button {
     gap: 10px;
 }
 
+/* A checkbox with its label on one line, aligned with the inputs next to it. */
+label.checkbox {
+    display: flex;
+    align-items: center;
+    align-self: end;
+    gap: 8px;
+    min-height: 40px;
+    cursor: pointer;
+
+    input {
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        padding: 0;
+        accent-color: var(--accent);
+    }
+}
+
+input:disabled {
+    opacity: 0.45;
+}
+
 .actions {
     display: flex;
     flex-wrap: wrap;
