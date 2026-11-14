@@ -1,137 +1,137 @@
-# CMC Helper — план ідей
+# CMC Helper — roadmap
 
-_Оновлено: 2026-11-14. Стан: **v1.0.0 випущено**; у гілці `release_1.1.0` — BingX, промо-сповіщення, тижневий дайджест, кеш ставок._
+_Updated: 2026-11-14. Status: **v1.0.0 released**; branch `release_1.1.0` adds BingX, promo alerts, the weekly summary and the rates cache._
 
-## 1. Прив'язка портфоліо до бірж ✅ (гілка `release_1.0.0`)
+## 1. Portfolios bound to exchanges ✅ (branch `release_1.0.0`)
 
-Зроблено: у колонці Earn рамка навколо біржі, де лежить монета, «no earn» для гаманців і бірж без продукту; у налаштуваннях кожне портфоліо прив'язується до біржі або «Wallet / other» (за замовчуванням — здогадка за назвою, тож працює з будь-якими назвами); у Telegram-сповіщеннях — рядки «💼 Bybit: 0.10% → +$X/yr». Окремий тип сповіщень «є краща ставка, ніж твоя поточна» не робили, щоб не спамити — можна додати.
+Done: in the Earn column, a ring around the exchange where the coin sits, "no earn" for wallets and exchanges without a product; in the settings each portfolio is bound to an exchange or "Wallet / other" (guessed from the name by default, so any names work); Telegram alerts get lines like "💼 Bybit: 0.10% → +$X/yr". A separate alert type "there's a better rate than yours" wasn't added, to avoid spam — can be added.
 
-_Початковий план:_
+_Original plan:_
 
-Портфоліо в CMC часто називають за біржами й гаманцями. Монета в портфоліо `Binance` означає, що вона лежить на Binance.
+CMC portfolios are often named after exchanges and wallets. A coin in the `Binance` portfolio means it sits on Binance.
 
-**Зіставлення назв** (без урахування регістру, `WhiteBit` = WhiteBIT):
+**Name matching** (case-insensitive, `WhiteBit` = WhiteBIT):
 
-| Портфоліо | Тип |
+| Portfolio | Type |
 |---|---|
-| Binance, Bybit, OKX, MEXC, WhiteBit | біржа з відомими ставками |
-| BingX | біржа без ставок: показувати «ставка невідома» й альтернативи |
-| Keplr, Phantom, Ready Wallet тощо | гаманець: показувати, скільки можна заробити |
-| портфоліо дрібних «лотерейних» позицій | ігнорувати |
-| заощадження в стейблкоїнах | не інвестиції: ігнорувати (у банері знімається галочкою) |
+| Binance, Bybit, OKX, MEXC, WhiteBit | exchange with known rates |
+| BingX | exchange without rates: show "rate unknown" and the alternatives |
+| Keplr, Phantom, Ready Wallet, etc. | wallet: show how much could be earned |
+| small "lottery" positions | ignore |
+| stablecoin savings | not an investment: ignore (unchecked in the banner) |
 
-**Що дає:**
-- у таблиці позначати біржу, де монета лежить зараз, і показувати, скільки недоотримуєш: «Bybit 0.10% → WhiteBIT 10.39%, +$X/рік»;
-- персональні сповіщення в Telegram: «твій POL на Binance 2%, на OKX 17.75%» замість загального «нова найкраща ставка».
+**What it gives:**
+- the table marks the exchange where the coin sits now and shows what you miss: "Bybit 0.10% → WhiteBIT 10.39%, +$X/yr";
+- personal Telegram alerts: "your POL is at 2% on Binance, OKX pays 17.75%" instead of a generic "new best rate".
 
-**Джерело даних — знайдено** (під час роботи над банером, п. 9):
-- `POST api.coinmarketcap.com/asset/v3/portfolio/dashboard/query-summary` з тілом `{}` одним запитом повертає всі монети, а в `subItems` кожної — у яких портфоліо вона лежить (`portfolioName`, `portfolioSourceId`, `value`, `balance`).
-- Запити йдуть з content script із сесією користувача: `credentials: 'include'` + заголовок `x-csrf-token` з однойменної cookie. Обгортка вже є: `entrypoints/content/cmcApi.ts` (з повтором при `40110`).
-- Працюємо на **справжньому акаунті CMC**: нічого в акаунті не змінювати без згоди, суми в чат не виводити (див. `CLAUDE.md`).
+**Data source — found** (while building the banner, item 9):
+- `POST api.coinmarketcap.com/asset/v3/portfolio/dashboard/query-summary` with body `{}` returns all coins in one request, and each coin's `subItems` list the portfolios it's in (`portfolioName`, `portfolioSourceId`, `value`, `balance`).
+- Requests go from the content script with the user's session: `credentials: 'include'` + the `x-csrf-token` header from the cookie of the same name. The wrapper is `entrypoints/content/cmcApi.ts` (retries on `40110`).
+- Development uses a **real CMC account**: change nothing in it without consent, never print amounts (see `CLAUDE.md`).
 
-**Відкрите питання:** чи надсилати сповіщення про монети в гаманцях.
+**Open question:** whether to alert about coins in wallets.
 
-## 2. Оцінка доходу в $/рік ✅ (гілка `release_1.0.0`)
+## 2. Yearly income estimate ✅ (branch `release_1.0.0`)
 
-Зроблено: рядок «≈ $X/yr → $Y/yr» під ставками (зараз = найкраща ставка на біржі, де лежить монета (flexible або fixed ≥ 7 днів), 0% у гаманцях; найкраща = flexible або fixed ≥ 7 днів). Ідея на потім: підсумок по всьому портфоліо в банері.
+Done: a line "≈ X/yr → Y/yr" under the rates (in coins since 1.1.0). "Now" = the best realistic rate on the exchange where the coin sits, 0% in wallets; "best" = the best realistic rate anywhere. Realistic = flexible, or fixed for longer than 14 days. Idea for later: a portfolio-wide total in the banner.
 
-_Початковий план:_
+_Original plan:_
 
-Сума монети в портфоліо × ставка = очікуваний дохід. Наприклад, 600% на 2 дні у MEXC на невеликій сумі можуть дати копійки. Внизу таблиці — підсумок по портфоліо. Береться з тих самих даних, що й п. 1.
+Coin amount × rate = expected income. For example, 600% for 2 days on MEXC on a small amount may earn pennies. A portfolio total under the table. Uses the same data as item 1.
 
-## 3. Ставки нативного стейкінгу в гаманцях
+## 3. Native staking rates for wallets
 
-Ставка залежить від мережі, а не від гаманця, бо гаманець просто делегує монети валідатору. Термін розстейкування стає `days`, тобто таблеткою на кшталт `21d`.
+The rate depends on the network, not the wallet: the wallet just delegates to a validator. The unbonding period becomes `days`, i.e. a pill like `21d`.
 
-- **Група 1 — Cosmos (Keplr), один модуль:** TIA, SEI, DYDX, SAGA, NIBI, FET.
-- **Група 2 — окремі модулі:** STRK (Ready), SUI, APT, ALEO (Leo Wallet).
-- **Ліквідний стейкінг через DefiLlama** (`yields.llama.fi/pools`, публічний, без ключа). Уже перевірено:
+- **Group 1 — Cosmos (Keplr), one module:** TIA, SEI, DYDX, SAGA, NIBI, FET.
+- **Group 2 — separate modules:** STRK (Ready), SUI, APT, ALEO (Leo Wallet).
+- **Liquid staking via DefiLlama** (`yields.llama.fi/pools`, public, no key). Already checked:
   - **SOL:** Sanctum Infinity 5.53%, Jupiter 5.03%, Jito 4.96%, BlazeStake 4.69%, Marinade 4.67%;
   - **STRK:** Endur 6.13%.
 
-  Потрібна таблиця відповідності токенів, наприклад JitoSOL → SOL.
-- **Група 3 — пізніше:** MINA, ROSE, ONE, CFX, ASTR, SUPRA, POL.
-- **Не вийде:** Telegram Wallet Earn — ймовірно, внутрішній API з авторизацією.
+  Needs a token mapping, e.g. JitoSOL → SOL.
+- **Group 3 — later:** MINA, ROSE, ONE, CFX, ASTR, SUPRA, POL.
+- **Not possible:** Telegram Wallet Earn — most likely an internal API behind auth.
 
-### Результати дослідження джерел (2026-11-13)
+### Source research (2026-11-13)
 
-Кожне джерело перевірено звичайним `curl` без ключів і без авторизації. Усі ставки нижче — мережеві, до комісії валідатора (зазвичай 5–20%), тому показувати їх як «≈X%».
+Every source was checked with plain `curl`, no keys, no auth. All rates below are network rates before the validator fee (usually 5–20%), so show them as "≈X%".
 
-| Монета | Джерело | Зараз | Розстейкування | Складність |
+| Coin | Source | Now | Unbonding | Effort |
 |---|---|---|---|---|
-| TIA | `chains.cosmos.directory/celestia` → `.chain.params.calculated_apr` (частка) | ≈5.2% | 14d | легко |
-| FET | `chains.cosmos.directory/fetchhub` → `calculated_apr` (а не `estimated_apr`) | ≈7.1% | 21d | легко |
-| SAGA | `chains.cosmos.directory/saga` → `calculated_apr` | ≈55% (справжня: застейкано лише ~5% монет) | 21d | легко, але показувати з позначкою |
-| STRK | Endur: `app.endur.fi/api/stats` → `.apy` (6.13% після комісії Endur 15%); нативна ≈ `.apy / 0.85` або через RPC `api.zan.top/public/starknet-mainnet` | нативна ≈7.2%, xSTRK ≈6.1% | 7d | легко (через Endur) |
-| APT | `api.mainnet.aptoslabs.com/v1/accounts/0x1/resource/0x1::staking_config::StakingRewardsConfig` → `rewards_rate.value / 2^64 × 4380` | ≈2.6% (після комісії ≈2.3%) | до 14d | легко; Aptos обмежує анонімні запити з однієї IP |
-| SEI | `rest.cosmos.directory/sei`: `total_mint_amount` з `seichain/mint/v1beta1/minter` ÷ `bonded_tokens` з `cosmos/staking/v1beta1/pool` | ≈4.0% | 21d | середньо, звіркою з реальними винагородами не підтверджено |
-| NIBI | `rest.cosmos.directory/nibiru`: `epoch_mint_provision × 360 × 0.28125 × 0.98 ÷ bonded` | ≈18% | 21d | середньо, звіркою не підтверджено |
-| SUI | GraphQL `graphql.mainnet.sui.io`: винагороди попередньої епохи × 365 ÷ `total_stake` | ≈1.3% | ~1d | середньо |
-| ALEO | `api.explorer.provable.com/v1/mainnet`: винагороди за блоки ÷ сумарний стейк з `/committee/latest` | ≈7–10% (залежить від комісій у блоках) | ~17 хв | складно; нативне делегування від 10 000 ALEO |
-| DYDX | готового джерела немає; винагороди виплачуються в USDC з торгових комісій | ≈2% у USDC, «шумна» цифра | 21d | ❌ не показувати |
+| TIA | `chains.cosmos.directory/celestia` → `.chain.params.calculated_apr` (fraction) | ≈5.2% | 14d | easy |
+| FET | `chains.cosmos.directory/fetchhub` → `calculated_apr` (not `estimated_apr`) | ≈7.1% | 21d | easy |
+| SAGA | `chains.cosmos.directory/saga` → `calculated_apr` | ≈55% (real: only ~5% of supply is staked) | 21d | easy, but show with a note |
+| STRK | Endur: `app.endur.fi/api/stats` → `.apy` (6.13% after Endur's 15% fee); native ≈ `.apy / 0.85` or via RPC `api.zan.top/public/starknet-mainnet` | native ≈7.2%, xSTRK ≈6.1% | 7d | easy (via Endur) |
+| APT | `api.mainnet.aptoslabs.com/v1/accounts/0x1/resource/0x1::staking_config::StakingRewardsConfig` → `rewards_rate.value / 2^64 × 4380` | ≈2.6% (≈2.3% after fee) | up to 14d | easy; Aptos rate-limits anonymous requests per IP |
+| SEI | `rest.cosmos.directory/sei`: `total_mint_amount` from `seichain/mint/v1beta1/minter` ÷ `bonded_tokens` from `cosmos/staking/v1beta1/pool` | ≈4.0% | 21d | medium, not verified against real rewards |
+| NIBI | `rest.cosmos.directory/nibiru`: `epoch_mint_provision × 360 × 0.28125 × 0.98 ÷ bonded` | ≈18% | 21d | medium, not verified |
+| SUI | GraphQL `graphql.mainnet.sui.io`: previous epoch rewards × 365 ÷ `total_stake` | ≈1.3% | ~1d | medium |
+| ALEO | `api.explorer.provable.com/v1/mainnet`: block rewards ÷ total stake from `/committee/latest` | ≈7–10% (depends on block fees) | ~17 min | hard; native delegation from 10,000 ALEO |
+| DYDX | no ready source; rewards are paid in USDC from trading fees | ≈2% in USDC, a noisy figure | 21d | ❌ don't show |
 
-**Нотатки:**
-- `chains.cosmos.directory/` віддає всі Cosmos-мережі одним запитом (~2 МБ). Це безкоштовний сервіс спільноти ECO Stake, гарантій роботи немає. Для SEI, DYDX і NIBI поле `calculated_apr` = null.
-- **SEI** не має інфляції: він щороку випускає фіксовану кількість монет, тому стандартна формула тут не працює.
-- **NIBI:** стейкерам іде лише 28.125% інфляції, тому формула «інфляція ÷ застейкане» завищує ставку приблизно втричі.
-- **STRK:** коефіцієнт 0.75 у нативній формулі (25% винагород отримують BTC-стейкери) агент припустив, а не прочитав з мережі, але результат точно збігається з даними Endur. Простіше брати Endur `.apy / 0.85`.
-- **SUI:** ставка поступово знижується, бо зменшується субсидія на стейкінг. Старий JSON-RPC вимкнений, лишився тільки GraphQL.
-- **APT:** брати `StakingRewardsConfig`, а не застаріле `StakingConfig.rewards_rate`. Ставка вже на мінімумі й далі не знижуватиметься.
-- **DefiLlama** (ліквідний стейкінг з TVL > $5M): для цих монет є лише Endur (xSTRK, 6.13%). Для SUI є тільки лендинг, а не стейкінг; для APT — Amnis 2.36% з TVL $2.4M; для TIA — нічого.
+**Notes:**
+- `chains.cosmos.directory/` returns all Cosmos chains in one request (~2 MB). It's a free community service by ECO Stake, no guarantees. `calculated_apr` is null for SEI, DYDX and NIBI.
+- **SEI** has no inflation: it mints a fixed amount per year, so the standard formula doesn't apply.
+- **NIBI:** stakers get only 28.125% of inflation, so "inflation ÷ staked" overstates the rate about threefold.
+- **STRK:** the 0.75 factor in the native formula (25% of rewards go to BTC stakers) was assumed, not read from the chain, but the result matches Endur exactly. Simpler to take Endur `.apy / 0.85`.
+- **SUI:** the rate slowly declines as the staking subsidy shrinks. The old JSON-RPC is off; only GraphQL is left.
+- **APT:** use `StakingRewardsConfig`, not the deprecated `StakingConfig.rewards_rate`. The rate is already at its floor.
+- **DefiLlama** (liquid staking with TVL > $5M): for these coins only Endur (xSTRK, 6.13%). SUI has lending only, not staking; APT — Amnis 2.36% with TVL $2.4M; TIA — nothing.
 
-**Порядок реалізації:**
-1. Один модуль «Cosmos»: TIA, FET, SAGA через `calculated_apr` одним запитом.
-2. STRK через Endur, APT через `StakingRewardsConfig`.
-3. Модулі з власними формулами: SEI, NIBI, SUI.
-4. ALEO, якщо буде потреба.
+**Order:**
+1. One "Cosmos" module: TIA, FET, SAGA via `calculated_apr` in one request.
+2. STRK via Endur, APT via `StakingRewardsConfig`.
+3. Modules with their own formulas: SEI, NIBI, SUI.
+4. ALEO if needed.
 
-DYDX не показувати.
+Don't show DYDX.
 
-## 4. Нагадування про закінчення fixed-планів
+## 4. Fixed-term expiry reminders
 
-Користувач вказує, наприклад, «BTC — WhiteBIT 30d, відкрив 12.11». За день до кінця плану в Telegram приходить «план закінчується, ось найкращі ставки зараз». Дату відкриття, ймовірно, доведеться вводити вручну.
+The user enters, e.g., "BTC — WhiteBIT 30d, opened 12.11". A day before the term ends, Telegram gets "your plan ends tomorrow, here are the best rates now". The start date will most likely have to be entered manually.
 
-## 5. Історія ставок і виявлення промо
+## 5. Rate history and promo detection
 
-Ставки й так перевіряються раз на кілька годин, тож їх можна зберігати й малювати маленький графік біля біржі. Різкий стрибок (як MEXC 600%) позначати як «ймовірно промо».
+Rates are checked every few hours anyway, so they can be stored and drawn as a small chart next to the exchange. A sudden jump (like MEXC 600%) could be marked "likely a promo". (1.1.0 already treats fixed terms up to 14 days as promos.)
 
-## 6. Сповіщення для «лотерейних» монет
+## 6. Alerts for "lottery" coins
 
-Портфоліо з дрібними «лотерейними» позиціями, які тримаються до альтсезону. Аналізувати їх щодня немає сенсу, але важливі два моменти:
+A portfolio of small "lottery" positions held until altseason. No point analysing them daily, but two things matter:
 
-- **Делістинг.** Сповіщення в Telegram, коли біржа оголошує делістинг монети з портфоліо: «⚠️ Bybit делістить XYZ 25.11 — у тебе XYZ у портфоліо Bybit». Мета — встигнути продати або вивести монету, поки це ще можливо.
-  - Джерела: у Bybit і OKX, ймовірно, є публічні API оголошень з окремою категорією делістингів; Binance публікує їх через внутрішній ендпоінт сайту. **Перед реалізацією перевірити наживо.**
-  - Монети, які вже делістнули: перевірити, чи можна їх ще вивести у свій гаманець.
-- **Різке зростання.** Сповіщення, коли «лотерейна» монета росте, наприклад +100% за добу або ×5 від ціни входу. Щоб не пропустити момент і за заздалегідь вирішеним правилом зафіксувати частину (наприклад, повернути вкладене).
+- **Delisting.** A Telegram alert when an exchange announces a delisting of a portfolio coin: "⚠️ Bybit delists XYZ on 25.11 — you hold XYZ in the Bybit portfolio". The goal is to sell or withdraw while it's still possible.
+  - Sources: Bybit and OKX probably have public announcement APIs with a delisting category; Binance publishes them via an internal website endpoint. **Check live before building.**
+  - Coins already delisted: check whether they can still be withdrawn to a wallet.
+- **Sharp rise.** An alert when a lottery coin pumps, e.g. +100% in a day or ×5 from the entry price, so you don't miss the moment and take some profit by a rule decided in advance (e.g. take out what you put in).
 
-Обидва пункти використовують прив'язку портфоліо з п. 1.
+Both use the portfolio binding from item 1.
 
-## 7. Сигнали для переливання між монетами (ratio trading)
+## 7. Ratio trading signals
 
-Альтернатива стейкінгу, мета якої — більше монет, а не доларів. Ідея: стежити за співвідношенням цін двох монет. Коли монета, яку тримаєш, тимчасово подорожчала відносно іншої, перелити частину в іншу; коли співвідношення повернулося до звичного рівня, обміняти назад.
+An alternative to staking whose goal is more coins, not more dollars. The idea: watch the price ratio of two coins. When the coin you hold gets temporarily expensive relative to the other, swap part of it; when the ratio returns to its usual level, swap back.
 
-**Формат:** тільки сповіщення за розкладом, усі обміни ти робиш вручну. Ніякої автоторгівлі й API-ключів бірж у браузері. Сповіщення простими словами, без індикаторів, наприклад:
+**Format:** scheduled alerts only, all swaps are manual. No auto-trading and no exchange API keys in the browser. Alerts in plain words, no indicators, e.g.:
 
-> 🔄 OP / ARB. Останні 3 місяці 1 OP зазвичай коштував ≈X ARB, а зараз Y — дорожче так буває лише в 5% днів. За 2 роки ця стратегія для OP дала +20% монет (10 обмінів).
+> 🔄 OP / ARB. Over the last 3 months 1 OP usually cost ≈X ARB, now it's Y — it's this expensive only on 5% of days. Over 2 years this strategy gave +20% more OP (10 swaps).
 
-### Бектест (2026-11-13, денні ціни Binance з ~02.2024, комісія 0.2% за кожен обмін)
+### Backtest (2026-11-13, Binance daily prices since ~02.2024, 0.2% fee per swap)
 
-Скрипти (`ratio_backtest.py`, `ratio_onesided.py`, `ratio_btc.py`) у репозиторій не потрапили; дані — публічний API Binance `/api/v3/klines` без ключів.
+The scripts (`ratio_backtest.py`, `ratio_onesided.py`, `ratio_btc.py`) are not in the repo; the data is Binance's public `/api/v3/klines`, no keys.
 
-**Тримаєш обидві монети 50/50** (90-денне середнє, вхід на 2σ, зсув до 25/75, повернення до 50/50 при |z| ≤ 0.5). Результат — порівняно з простим утриманням. Пари A/B і B/A тут дають ті самі цифри:
+**Holding both coins 50/50** (90-day mean, enter at 2σ, shift to 25/75, back to 50/50 at |z| ≤ 0.5). Result vs simply holding. A/B and B/A give the same numbers here:
 
-| Пара | Результат | Обмінів |
+| Pair | Result | Swaps |
 |---|---|---|
 | ZK/STRK | +106% | 29 |
-| TIA/SEI | +21% (до +65% з 30-денним вікном) | 31 |
+| TIA/SEI | +21% (up to +65% with a 30-day window) | 31 |
 | WIF/BONK | +18% | 23 |
 | FET/RENDER | +2% | 17 |
 | ARB/OP | −21% | 20 |
 | SUI/APT | −35% | 24 |
 
-**Тримаєш одну монету** (переливаєш 50%, коли вона задорога, і повертаєш, коли співвідношення нормалізувалось). Результат — на скільки більше цієї монети стало:
+**Holding one coin** (swap 50% when it's expensive, swap back when the ratio normalizes). Result: how much more of that coin you end up with:
 
-| Тримаєш → пара з | Більше монет | | Тримаєш → пара з | Більше монет |
+| Hold → paired with | More coins | | Hold → paired with | More coins |
 |---|---|---|---|---|
 | ARB → OP | −25% | | OP → ARB | +20% |
 | ZK → STRK | +33% | | STRK → ZK | +85% |
@@ -140,77 +140,75 @@ DYDX не показувати.
 | FET → RENDER | +20% | | RENDER → FET | +2% |
 | WIF → BONK | −16% | | BONK → WIF | +19% |
 
-**Висновки:**
-- **Напрямок важливий:** вигравав той, хто тримав монету, що відставала (OP, APT, BONK). Хто тримав лідера (ARB, SUI, WIF), продавав «злети», які виявлялися продовженням тренду, і втрачав монети.
-- **«Захист від трендів»** (не входити, якщо середнє співвідношення за 90 днів зсунулося більш ніж на 30%) **не допоміг**: збитки майже не зменшив, а прибутки урізав. У фічу його не закладати.
-- **Обмінів:** ~3–8 на рік для одного напрямку, тож вручну це цілком реально.
-- **Застереження:** це одна історія на одних налаштуваннях; «+X% монет» ≠ «+X% у доларах»; кожен обмін може бути оподатковуваною подією; монети у fixed-стейку чи на розстейкуванні швидко не переллєш.
+**Takeaways:**
+- **Direction matters:** holding the laggard won (OP, APT, BONK). Holding the leader (ARB, SUI, WIF) meant selling "spikes" that turned out to be the trend continuing, and losing coins.
+- **A trend guard** (don't enter if the 90-day mean ratio moved more than 30%) **didn't help**: it barely cut losses and trimmed gains. Leave it out.
+- **Swaps:** ~3–8 a year per direction, so doing them by hand is realistic.
+- **Caveats:** one history, one set of parameters; "+X% coins" ≠ "+X% in dollars"; every swap may be a taxable event; coins in a fixed term or unbonding can't be swapped quickly.
 
-**Поправка на BTC (перевірено):**
-- **Бета до BTC** (денні доходності, весь період): ARB 1.35 / OP 1.33, ZK 1.46 / STRK 1.38, SUI 1.39 / APT 1.29, TIA 1.37 / SEI 1.36, FET 1.52 / RENDER 1.56, WIF 1.89 / BONK 1.79. Кореляція з BTC у всіх 0.53–0.71.
-- **Сигнал без впливу BTC** (`spread = ln(A/B) − (β_A − β_B)·ln(BTC)`, бета за попередні 90 днів) **стабільно нічого не покращує**: TIA/SEI +9% → +26%, SUI/APT −35% → −30%, ARB/OP −19% → −17%, WIF/BONK +10% → +11%, але ZK/STRK +97% → +84% і FET/RENDER +10% → +2%. Причина: у парах з однієї категорії бети й так майже однакові, а втрати SUI/APT — це власний тренд монети, а не ринок. У сигнал поправку не закладати.
-- **Де бета корисна:** у виборі пар. Якщо в парі сильно різна бета (наприклад, BONK 1.79 і APT 1.29), показувати попередження, що на бичачому ринку перша систематично обганятиме другу.
+**BTC adjustment (checked):**
+- **Beta to BTC** (daily returns, whole period): ARB 1.35 / OP 1.33, ZK 1.46 / STRK 1.38, SUI 1.39 / APT 1.29, TIA 1.37 / SEI 1.36, FET 1.52 / RENDER 1.56, WIF 1.89 / BONK 1.79. Correlation with BTC 0.53–0.71 for all.
+- **A BTC-neutral signal** (`spread = ln(A/B) − (β_A − β_B)·ln(BTC)`, beta over the previous 90 days) **doesn't improve things consistently**: TIA/SEI +9% → +26%, SUI/APT −35% → −30%, ARB/OP −19% → −17%, WIF/BONK +10% → +11%, but ZK/STRK +97% → +84% and FET/RENDER +10% → +2%. Pairs from one sector already have near-equal betas, and the SUI/APT losses are the coin's own trend, not the market. Leave it out of the signal.
+- **Where beta helps:** choosing pairs. If the betas differ a lot (e.g. BONK 1.79 vs APT 1.29), warn that in a bull market the first will systematically outrun the second.
 
-**Дизайн фічі:**
-- **Основна модель — «тримаю обидві 50/50».** Користувач тримає обидві монети пари (обидві йому цікаві) і готовий лишитися з перекосом в одну з них, якщо співвідношення не повернеться. Модель з однією монетою — довідкова.
-- **Межа перекосу налаштовується** (за замовчуванням 25/75, обережніше — 40/60). Стратегія ніколи не переливає все в одну монету, тож найгірший сценарій — перекос, а не вихід з позиції.
-- Пари задаєш у налаштуваннях. Монету, яку ти тримаєш, розширення бере з портфоліо (п. 1).
-- Біля кожного напрямку — статистика бектесту на історії Binance. Для напрямків з історичним мінусом сповіщень не надсилати або явно попереджати.
-- Ціни — денні свічки Binance `/api/v3/klines`; перевірка раз на добу.
+**Design:**
+- **Main model — "hold both 50/50".** The user holds both coins of a pair (likes both) and is fine ending up skewed towards one if the ratio doesn't come back. The one-coin model is for reference.
+- **The skew limit is configurable** (25/75 by default, 40/60 to be careful). The strategy never moves everything into one coin, so the worst case is a skew, not an exit.
+- Pairs are set in the settings. The coin you hold comes from the portfolio (item 1).
+- Next to each direction — backtest stats on Binance history. For directions with a historical loss, don't alert or warn explicitly.
+- Prices — Binance daily candles `/api/v3/klines`; checked once a day.
 
-## 8. Журнал обмінів
+## 8. Swap journal
 
-Обміни зазвичай ведуть у таблиці. Журнал у розширенні замінить її і стане станом для сигналів з п. 7: щоб сказати «повертай назад», розширення має знати, чи виконано попередній сигнал і в якому стані пара (50/50 чи 25/75).
+Swaps are usually tracked in a spreadsheet. A journal in the extension would replace it and hold the state for the signals in item 7: to say "swap back", the extension must know whether the previous signal was acted on and what state the pair is in (50/50 or 25/75).
 
-- **Запис в один клік** зі сповіщення або зі сторінки налаштувань; поля заповнені поточними цінами, кількості користувач підправляє під фактичне виконання.
-- **Результат кожного кола** (A → B → A): «+6.2% TIA порівняно з тим, щоб нічого не міняти», плюс загальний підсумок по парі.
-- **Імпорт CSV** з наявної таблиці й **експорт у CSV**.
-- **Резервні копії:** дані живуть лише в профілі Chrome (`storage.local` або IndexedDB) і зникнуть після перевстановлення, тому експорт обов'язковий; раз на місяць нагадувати зробити бекап. Поки експорту немає, головним записом лишається таблиця.
-- **Пізніше:** перевірити, чи можна синхронізувати журнал з транзакціями в портфоліо CMC.
+- **One-click entry** from an alert or the settings page; fields prefilled with current prices, the user corrects amounts to what was actually filled.
+- **Result of each round** (A → B → A): "+6.2% TIA vs doing nothing", plus a total per pair.
+- **CSV import** from an existing spreadsheet and **CSV export**.
+- **Backups:** the data lives only in the Chrome profile (`storage.local` or IndexedDB) and is lost on reinstall, so export is a must; remind about a backup monthly. Until export exists, the spreadsheet stays the main record.
+- **Later:** check whether the journal can sync with CMC portfolio transactions.
 
-## 9. Загальна сума вкладень і прибуток/збиток ✅ (гілка `release_1.0.0`)
+## 9. Total invested and profit/loss ✅ (branch `release_1.0.0`)
 
-Зроблено: банер на самому верху сторінки портфоліо (і Overview, і кожне портфоліо) — **Invested / Value / Profit-Loss** по всіх портфоліо.
-- Дані — статистика самого CMC (`portfolio/queryStatistics` по кожному портфоліо, сума).
-- **Invested = Value − P/L** (чисті вкладення): «Cost Basis» CMC — це сума всіх покупок і рахує перелиті через обміни гроші повторно; вона в підказці.
-- Портфоліо, що не є інвестиціями знімаються галочками на сторінці налаштувань.
-- Коли в CMC приховані баланси — суми приховані, лишається відсоток.
+Done: a banner at the very top of the portfolio page (Overview and each portfolio) — **Invested / Value / Profit-Loss** across all portfolios.
+- Data — CMC's own statistics (`portfolio/queryStatistics` per portfolio, summed).
+- **Invested = Value − P/L** (net invested): CMC's "Cost Basis" is the sum of all buys and counts money moved through swaps twice; it's in the tooltip.
+- Portfolios that aren't investments are unchecked on the settings page.
+- When CMC hides balances, the amounts are hidden too and only the percentage stays.
 
-Ідея на потім: окремо показувати, скільки прибутку дав стейкінг, а скільки ріст цін (потрібен журнал, п. 8).
+Idea for later: show separately how much profit came from staking and how much from price growth (needs the journal, item 8).
 
-## 10. Інше
+## 10. Other
 
-- **Команди боту:** `/rates btc` у Telegram повертає поточні ставки (працює, поки увімкнений Chrome).
-- **«Довіра» до бірж:** користувач задає вагу кожної біржі, і сортування враховує ризик.
-- **Нові біржі:** Gate, KuCoin, Bitget — спершу перевірити, чи є публічні ендпоінти.
+- **Bot commands:** `/rates btc` in Telegram returns the current rates (works while Chrome is running).
+- **Exchange "trust":** the user sets a weight per exchange, and sorting accounts for risk.
+- **New exchanges:** Gate, KuCoin, Bitget — first check for public endpoints.
 
-## 11. Ручні ставки для місць без API
+## 11. Manual rates for places without an API
 
-Для гаманців і сервісів, ставки яких не можна отримати автоматично (Walt / Telegram Wallet, BingX, сервіс зі стейкінгом NIBI), — поле в налаштуваннях: портфоліо → монета → ставка (і термін). Розширення показує її в колонці Earn поруч із біржами й рахує з неї дохід «зараз». Ставки там міняються не щодня, оновлювати вручну раз на якийсь час нескладно.
+For wallets and services whose rates can't be fetched (Walt / Telegram Wallet, a NIBI staking service) — a settings field: portfolio → coin → rate (and term). The extension shows it in the Earn column next to the exchanges and counts "now" income from it. These rates don't change daily, so updating them by hand now and then is easy. Low priority for now: only a coin or two sit in such places.
 
-**Walt (ex. Wallet in Telegram), перевірено 2026-11-13:** автоматично не можна. Публічних ставок немає (walt.io, help.walt.io — лише приклади); API міні-застосунку (`walletbot.me/earn/public-api/v1/campaigns/`) без Telegram-авторизації віддає 401; «Долари» йдуть через Ethena (~5.25%), але Walt платить свою ставку з націнкою й бонусами (у застосунку 6.19%), тож з публічних даних її не вивести.
+**Walt (ex. Wallet in Telegram), checked 2026-11-13:** not possible automatically. No public rates (walt.io, help.walt.io — examples only); the mini app API (`walletbot.me/earn/public-api/v1/campaigns/`) returns 401 without Telegram auth; "Dollars" go through Ethena (~5.25%), but Walt pays its own rate with a markup and bonuses, so it can't be derived from public data.
 
-**Ready wallet — ✅ зроблено** (STRK 6.50% з API самого гаманця).
+**Ready wallet — ✅ done** (STRK 6.50% from the wallet's own API).
 
-## 12. Синк кількості монет з біржами через API-ключ (наступна велика фіча після 1.1.0)
+**BingX — ✅ done in 1.1.0** (rates read from its Earn page, see the README).
 
-Ключ лише на читання для біржі в налаштуваннях, прив'язаний до портфоліо. Воркер підписує запити (HMAC через WebCrypto) і бере баланси: спот + Earn/стейкінг + funding. Content script ключів не бачить.
+## 12. Syncing coin amounts with exchanges via an API key (next big feature after 1.1.0)
 
-- На CMC біля монети, де кількість на біржі ≠ кількості в портфоліо: «на біржі +N / −N» і кнопка **Sync**, яка додає транзакцію на різницю (як Set amount). Лише з підтвердженням: правило «без непогоджених транзакцій».
-- **Різниця: купівля чи нагорода?** Біржа знає лише кількість. Ідеї:
-  - вибір при синку: Buy за поточною ціною / 🎁 Free;
-  - підказка за джерелом: приріст на Earn-позиції без депозитів = нагорода; якщо в історії депозитів/угод біржі є купівля чи депозит на цю суму — купівля (можна взяти ціну з угоди);
-  - зменшення: продаж або вивід (переказ в інше портфоліо, а не продаж).
-- Перевірити по кожній біржі, чи API віддає Earn-позиції повністю (найменше певності — MEXC, WhiteBIT; BingX Wealth — лише загальна сума в USDT).
-- Ключі — локально, як токен бота; лише read-only. Тестувати на справжньому read-only ключі, починаючи з Binance.
+A read-only exchange key in the settings, bound to a portfolio. The worker signs requests (HMAC via WebCrypto) and reads balances: spot + Earn/staking + funding. The content script never sees the keys.
 
-## Техборг
+- On CMC next to a coin whose amount on the exchange ≠ the amount in the portfolio: "on the exchange +N / −N" and a **Sync** button that adds a transaction for the difference (like Set amount). Only with confirmation: the "no unapproved transactions" rule.
+- **The difference: a buy or a reward?** The exchange only knows the amount. Ideas:
+  - choose when syncing: Buy at the current price / 🎁 Free;
+  - a hint from the source: growth of an Earn position without deposits = reward; a matching buy or deposit in the exchange's history = buy (the price can be taken from the trade);
+  - a decrease: a sale or a withdrawal (a transfer to another portfolio, not a sale).
+- Check per exchange whether the API returns Earn positions fully (least certain: MEXC, WhiteBIT; BingX Wealth returns only a USDT total).
+- Keys stay local, like the bot token; read-only only. Test with a real read-only key, starting with Binance.
 
-- Кеш ставок, щоб не робити ~90 запитів при кожному відкритті портфоліо (більшість — fixed-плани WhiteBIT).
-- release-it не прикріпив zip до релізу v0.0.4 — з'ясувати причину за виводом наступного релізу.
-- Автоматичні реліз-нотси з комітів (`releaseNotes` у `.release-it.json`).
-- ~~Фільтр коротких промо MEXC (1–2 дні) у сповіщеннях.~~ ✅ 1.1.0: терміни до 14 днів — промо, окремі сповіщення «🎁».
+## Tech debt
 
-## Відкладено
-
-- **BingX:** немає публічного API, веб-API вимагає підпису кожного запиту. Можлива альтернатива — перехоплювати відповіді на bingx.com.
+- ~~Rates cache, so opening the portfolio doesn't fire ~90 requests (mostly WhiteBIT fixed plans).~~ ✅ 1.1.0: the worker caches rates.
+- release-it didn't attach the zip to the v0.0.4 release — find out from the next release's output.
+- Automatic release notes from commits (`releaseNotes` in `.release-it.json`).
+- ~~Filter MEXC's short promos (1–2 days) out of alerts.~~ ✅ 1.1.0: terms up to 14 days are promos with their own "🎁" alerts.

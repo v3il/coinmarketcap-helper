@@ -1,22 +1,23 @@
-# CoinMarketCap Helper — правила роботи
+# CoinMarketCap Helper — working rules
 
-Розширення розробляється й тестується на справжньому акаунті CoinMarketCap. Правила нижче — для ШІ-асистента (Claude Code), який працює з цим репозиторієм.
+The extension is developed and tested on a real CoinMarketCap account. The rules below are for the AI assistant (Claude Code) working on this repository.
 
-## Робота зі справжнім акаунтом CoinMarketCap
+## Working with the real CoinMarketCap account
 
-1. **Не називати суми.** Ні в доларах, ні кількість монет у портфоліо. Де можна, оперувати відсотками: частка, зміна, прибуток/збиток у %. Це стосується і чату, і комітів, PR, файлів у репозиторії та тестових даних.
-2. **Не додавати транзакцій без погодження.** Будь-яку нову транзакцію в портфоліо (купівля, продаж, переказ тощо) — тільки після явного дозволу власника акаунта. Спершу спитати, що саме додати.
-   - **Виняток для тестів:** у портфоліо, відведеному під тести (`Trash`), можна додавати й видаляти тестові транзакції на одну з його монет — мінімальні кількості, і після тесту видалити все, що створено. Інші портфоліо — лише з дозволу.
-3. **Портфоліо можна перейменовувати, лише якщо назва зберігає сенс.** Наприклад, `WhiteBit` → `WhiteBIT` можна. Змінювати, яку біржу чи гаманець означає портфоліо, не можна: `MEXC` не може стати `BingX`.
-4. **Пароль від CMC не питати.** Вхід в акаунт власник робить сам; асистент лише читає сторінку й запити.
+1. **Never state amounts.** Neither in dollars nor as coin counts in the portfolio. Where possible, use percentages: share, change, profit/loss in %. This applies to chat, commits, PRs, files in the repository and test data.
+2. **No transactions without approval.** Any new transaction in a portfolio (buy, sell, transfer, etc.) only after the account owner explicitly allows it. Ask first what exactly to add.
+   - **Exception for tests:** in the portfolio set aside for tests (`Trash`), test transactions on one of its coins may be added and removed — minimal amounts, and everything created is deleted after the test. Other portfolios — only with permission.
+3. **Portfolios may be renamed only if the name keeps its meaning.** E.g. `WhiteBit` → `WhiteBIT` is fine. Changing which exchange or wallet a portfolio stands for is not: `MEXC` can't become `BingX`.
+4. **Never ask for the CMC password.** The owner logs in themselves; the assistant only reads the page and its requests.
 
-## Репозиторій публічний
+## The repository is public
 
-- Не комітити нічого особистого: суми, баланси, склад портфоліо, токени й ключі (бот Telegram, GitHub, біржі).
-- `.env` (токен для релізів) не комітиться й ніколи не виводиться.
+- Commit nothing personal: amounts, balances, portfolio composition, tokens and keys (Telegram bot, GitHub, exchanges).
+- `.env` (the release token) is never committed or printed.
 
-## Інше
+## Other
 
-- План фіч: `ROADMAP.md`.
-- Пушити: `git push origin`; PR відкривати через `gh pr create --repo v3il/coinmarketcap-helper`, назва PR = назва гілки.
-- Реліз: release-it з токеном з `.env`; ZIP прикріплюється до GitHub-релізу.
+- Feature plan: `ROADMAP.md`.
+- Push with `git push origin`; open PRs with `gh pr create --repo v3il/coinmarketcap-helper`, PR title = branch name.
+- Release: release-it with the token from `.env`; the zip is attached to the GitHub release.
+- Code, comments, commits, PRs and docs are in English.
