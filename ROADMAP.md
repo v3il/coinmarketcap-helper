@@ -1,45 +1,44 @@
 # CMC Helper — roadmap
 
-_Updated: 2026-11-14. Status: **v1.0.0 released**; branch `release_1.1.0` adds BingX, promo alerts, the weekly summary and the rates cache._
+_Updated: 2026-11-14._
 
-## 1. Portfolios bound to exchanges ✅ (branch `release_1.0.0`)
+## Done
 
-Done: in the Earn column, a ring around the exchange where the coin sits, "no earn" for wallets and exchanges without a product; in the settings each portfolio is bound to an exchange or "Wallet / other" (guessed from the name by default, so any names work); Telegram alerts get lines like "💼 Bybit: 0.10% → +$X/yr". A separate alert type "there's a better rate than yours" wasn't added, to avoid spam — can be added.
+### 1.0.0
+- **Earn column:** the best rates per coin across Binance, Bybit, OKX, MEXC, WhiteBIT and Ready wallet.
+- **Portfolios bound to exchanges:** a ring around the exchange where the coin sits; each portfolio bound to an exchange or "Wallet / other" in the settings (guessed from the name by default). Data: CMC's `portfolio/dashboard/query-summary` (`entrypoints/content/cmcApi.ts`).
+- **Yearly income estimate** under the rates: now vs at the best rate.
+- **Totals banner:** Invested / Value / Profit-Loss across portfolios (Invested = Value − P/L; CMC's Cost Basis counts swapped money twice). Portfolios that aren't investments are unchecked in the settings.
+- **Set amount** on the Holdings cell, with 🎁 Free for rewards.
+- **Telegram alerts** for new best rates, with where the coin sits and what moving it would add.
 
-_Original plan:_
+### 1.1.0 (branch `release_1.1.0`)
+- **BingX:** rates read from its Earn page (its own signed request), optional background-tab refresh, amount tiers.
+- **Promos:** fixed terms up to 14 days don't count as the best rate and get their own 🎁 alerts.
+- **Quieter alerts:** none when the coin already sits on the best exchange, none for coins under $10, unchecked portfolios left out; "📍 Now on" line.
+- **Weekly summary** in Telegram: income now vs at the best rates, the top 5 moves, running promos.
+- **Rates cache** in the worker: the portfolio page no longer loads every exchange on each visit.
+- **Income in coins** instead of USD.
 
-CMC portfolios are often named after exchanges and wallets. A coin in the `Binance` portfolio means it sits on Binance.
+## Planned
 
-**Name matching** (case-insensitive, `WhiteBit` = WhiteBIT):
+### 1. Syncing coin amounts with exchanges via an API key (next big feature)
 
-| Portfolio | Type |
-|---|---|
-| Binance, Bybit, OKX, MEXC, WhiteBit | exchange with known rates |
-| BingX | exchange without rates: show "rate unknown" and the alternatives |
-| Keplr, Phantom, Ready Wallet, etc. | wallet: show how much could be earned |
-| small "lottery" positions | ignore |
-| stablecoin savings | not an investment: ignore (unchecked in the banner) |
+A read-only exchange key in the settings, bound to a portfolio. The worker signs requests (HMAC via WebCrypto) and reads balances: spot + Earn/staking + funding. The content script never sees the keys.
 
-**What it gives:**
-- the table marks the exchange where the coin sits now and shows what you miss: "Bybit 0.10% → WhiteBIT 10.39%, +$X/yr";
-- personal Telegram alerts: "your POL is at 2% on Binance, OKX pays 17.75%" instead of a generic "new best rate".
+- On CMC next to a coin whose amount on the exchange ≠ the amount in the portfolio: "on the exchange +N / −N" and a **Sync** button that adds a transaction for the difference (like Set amount). Only with confirmation: the "no unapproved transactions" rule.
+- **The difference: a buy or a reward?** The exchange only knows the amount. Ideas:
+  - choose when syncing: Buy at the current price / 🎁 Free;
+  - a hint from the source: growth of an Earn position without deposits = reward; a matching buy or deposit in the exchange's history = buy (the price can be taken from the trade);
+  - a decrease: a sale or a withdrawal (a transfer to another portfolio, not a sale).
+- Check per exchange whether the API returns Earn positions fully (least certain: MEXC, WhiteBIT; BingX Wealth returns only a USDT total).
+- Keys stay local, like the bot token; read-only only. Test with a real read-only key, starting with Binance.
 
-**Data source — found** (while building the banner, item 9):
-- `POST api.coinmarketcap.com/asset/v3/portfolio/dashboard/query-summary` with body `{}` returns all coins in one request, and each coin's `subItems` list the portfolios it's in (`portfolioName`, `portfolioSourceId`, `value`, `balance`).
-- Requests go from the content script with the user's session: `credentials: 'include'` + the `x-csrf-token` header from the cookie of the same name. The wrapper is `entrypoints/content/cmcApi.ts` (retries on `40110`).
-- Development uses a **real CMC account**: change nothing in it without consent, never print amounts (see `CLAUDE.md`).
+### 2. Fixed-term expiry reminders
 
-**Open question:** whether to alert about coins in wallets.
+The user enters, e.g., "BTC — WhiteBIT 30d, opened 12.11". A day before the term ends, Telegram gets "your plan ends tomorrow, here are the best rates now". The start date will most likely have to be entered manually.
 
-## 2. Yearly income estimate ✅ (branch `release_1.0.0`)
-
-Done: a line "≈ X/yr → Y/yr" under the rates (in coins since 1.1.0). "Now" = the best realistic rate on the exchange where the coin sits, 0% in wallets; "best" = the best realistic rate anywhere. Realistic = flexible, or fixed for longer than 14 days. Idea for later: a portfolio-wide total in the banner.
-
-_Original plan:_
-
-Coin amount × rate = expected income. For example, 600% for 2 days on MEXC on a small amount may earn pennies. A portfolio total under the table. Uses the same data as item 1.
-
-## 3. Native staking rates for wallets
+### 3. Native staking rates for wallets
 
 The rate depends on the network, not the wallet: the wallet just delegates to a validator. The unbonding period becomes `days`, i.e. a pill like `21d`.
 
@@ -53,7 +52,7 @@ The rate depends on the network, not the wallet: the wallet just delegates to a 
 - **Group 3 — later:** MINA, ROSE, ONE, CFX, ASTR, SUPRA, POL.
 - **Not possible:** Telegram Wallet Earn — most likely an internal API behind auth.
 
-### Source research (2026-11-13)
+#### Source research (2026-11-13)
 
 Every source was checked with plain `curl`, no keys, no auth. All rates below are network rates before the validator fee (usually 5–20%), so show them as "≈X%".
 
@@ -87,15 +86,7 @@ Every source was checked with plain `curl`, no keys, no auth. All rates below ar
 
 Don't show DYDX.
 
-## 4. Fixed-term expiry reminders
-
-The user enters, e.g., "BTC — WhiteBIT 30d, opened 12.11". A day before the term ends, Telegram gets "your plan ends tomorrow, here are the best rates now". The start date will most likely have to be entered manually.
-
-## 5. Rate history and promo detection
-
-Rates are checked every few hours anyway, so they can be stored and drawn as a small chart next to the exchange. A sudden jump (like MEXC 600%) could be marked "likely a promo". (1.1.0 already treats fixed terms up to 14 days as promos.)
-
-## 6. Alerts for "lottery" coins
+### 4. Alerts for "lottery" coins
 
 A portfolio of small "lottery" positions held until altseason. No point analysing them daily, but two things matter:
 
@@ -104,9 +95,9 @@ A portfolio of small "lottery" positions held until altseason. No point analysin
   - Coins already delisted: check whether they can still be withdrawn to a wallet.
 - **Sharp rise.** An alert when a lottery coin pumps, e.g. +100% in a day or ×5 from the entry price, so you don't miss the moment and take some profit by a rule decided in advance (e.g. take out what you put in).
 
-Both use the portfolio binding from item 1.
+Both use the portfolio → exchange binding (done in 1.0.0).
 
-## 7. Ratio trading signals
+### 5. Ratio trading signals
 
 An alternative to staking whose goal is more coins, not more dollars. The idea: watch the price ratio of two coins. When the coin you hold gets temporarily expensive relative to the other, swap part of it; when the ratio returns to its usual level, swap back.
 
@@ -114,7 +105,7 @@ An alternative to staking whose goal is more coins, not more dollars. The idea: 
 
 > 🔄 OP / ARB. Over the last 3 months 1 OP usually cost ≈X ARB, now it's Y — it's this expensive only on 5% of days. Over 2 years this strategy gave +20% more OP (10 swaps).
 
-### Backtest (2026-11-13, Binance daily prices since ~02.2024, 0.2% fee per swap)
+#### Backtest (2026-11-13, Binance daily prices since ~02.2024, 0.2% fee per swap)
 
 The scripts (`ratio_backtest.py`, `ratio_onesided.py`, `ratio_btc.py`) are not in the repo; the data is Binance's public `/api/v3/klines`, no keys.
 
@@ -154,61 +145,37 @@ The scripts (`ratio_backtest.py`, `ratio_onesided.py`, `ratio_btc.py`) are not i
 **Design:**
 - **Main model — "hold both 50/50".** The user holds both coins of a pair (likes both) and is fine ending up skewed towards one if the ratio doesn't come back. The one-coin model is for reference.
 - **The skew limit is configurable** (25/75 by default, 40/60 to be careful). The strategy never moves everything into one coin, so the worst case is a skew, not an exit.
-- Pairs are set in the settings. The coin you hold comes from the portfolio (item 1).
+- Pairs are set in the settings. The coin you hold comes from the portfolio.
 - Next to each direction — backtest stats on Binance history. For directions with a historical loss, don't alert or warn explicitly.
 - Prices — Binance daily candles `/api/v3/klines`; checked once a day.
 
-## 8. Swap journal
+### 6. Swap journal
 
-Swaps are usually tracked in a spreadsheet. A journal in the extension would replace it and hold the state for the signals in item 7: to say "swap back", the extension must know whether the previous signal was acted on and what state the pair is in (50/50 or 25/75).
+Swaps are usually tracked in a spreadsheet. A journal in the extension would replace it and hold the state for the signals in item 5: to say "swap back", the extension must know whether the previous signal was acted on and what state the pair is in (50/50 or 25/75).
 
 - **One-click entry** from an alert or the settings page; fields prefilled with current prices, the user corrects amounts to what was actually filled.
 - **Result of each round** (A → B → A): "+6.2% TIA vs doing nothing", plus a total per pair.
 - **CSV import** from an existing spreadsheet and **CSV export**.
 - **Backups:** the data lives only in the Chrome profile (`storage.local` or IndexedDB) and is lost on reinstall, so export is a must; remind about a backup monthly. Until export exists, the spreadsheet stays the main record.
 - **Later:** check whether the journal can sync with CMC portfolio transactions.
+- **Later:** show separately how much profit came from staking and how much from price growth (needs the journal).
 
-## 9. Total invested and profit/loss ✅ (branch `release_1.0.0`)
-
-Done: a banner at the very top of the portfolio page (Overview and each portfolio) — **Invested / Value / Profit-Loss** across all portfolios.
-- Data — CMC's own statistics (`portfolio/queryStatistics` per portfolio, summed).
-- **Invested = Value − P/L** (net invested): CMC's "Cost Basis" is the sum of all buys and counts money moved through swaps twice; it's in the tooltip.
-- Portfolios that aren't investments are unchecked on the settings page.
-- When CMC hides balances, the amounts are hidden too and only the percentage stays.
-
-Idea for later: show separately how much profit came from staking and how much from price growth (needs the journal, item 8).
-
-## 10. Other
-
-- **Bot commands:** `/rates btc` in Telegram returns the current rates (works while Chrome is running).
-- **Exchange "trust":** the user sets a weight per exchange, and sorting accounts for risk.
-- **New exchanges:** Gate, KuCoin, Bitget — first check for public endpoints.
-
-## 11. Manual rates for places without an API
+### 7. Manual rates for places without an API
 
 For wallets and services whose rates can't be fetched (Walt / Telegram Wallet, a NIBI staking service) — a settings field: portfolio → coin → rate (and term). The extension shows it in the Earn column next to the exchanges and counts "now" income from it. These rates don't change daily, so updating them by hand now and then is easy. Low priority for now: only a coin or two sit in such places.
 
 **Walt (ex. Wallet in Telegram), checked 2026-11-13:** not possible automatically. No public rates (walt.io, help.walt.io — examples only); the mini app API (`walletbot.me/earn/public-api/v1/campaigns/`) returns 401 without Telegram auth; "Dollars" go through Ethena (~5.25%), but Walt pays its own rate with a markup and bonuses, so it can't be derived from public data.
 
-**Ready wallet — ✅ done** (STRK 6.50% from the wallet's own API).
+### 8. Other
 
-**BingX — ✅ done in 1.1.0** (rates read from its Earn page, see the README).
-
-## 12. Syncing coin amounts with exchanges via an API key (next big feature after 1.1.0)
-
-A read-only exchange key in the settings, bound to a portfolio. The worker signs requests (HMAC via WebCrypto) and reads balances: spot + Earn/staking + funding. The content script never sees the keys.
-
-- On CMC next to a coin whose amount on the exchange ≠ the amount in the portfolio: "on the exchange +N / −N" and a **Sync** button that adds a transaction for the difference (like Set amount). Only with confirmation: the "no unapproved transactions" rule.
-- **The difference: a buy or a reward?** The exchange only knows the amount. Ideas:
-  - choose when syncing: Buy at the current price / 🎁 Free;
-  - a hint from the source: growth of an Earn position without deposits = reward; a matching buy or deposit in the exchange's history = buy (the price can be taken from the trade);
-  - a decrease: a sale or a withdrawal (a transfer to another portfolio, not a sale).
-- Check per exchange whether the API returns Earn positions fully (least certain: MEXC, WhiteBIT; BingX Wealth returns only a USDT total).
-- Keys stay local, like the bot token; read-only only. Test with a real read-only key, starting with Binance.
+- **Bot commands:** `/rates btc` in Telegram returns the current rates (works while Chrome is running).
+- **Exchange "trust":** the user sets a weight per exchange, and sorting accounts for risk.
+- **New exchanges:** Gate, KuCoin, Bitget — first check for public endpoints.
+- **Rate history:** rates are checked every few hours anyway, so they could be stored and drawn as a small chart next to the exchange.
+- **"Better rate than yours" alerts:** a separate alert when a coin sits at a noticeably worse rate than the best one (the weekly summary covers this for now).
+- **Portfolio-wide income in the banner** next to Invested / Value / P/L.
 
 ## Tech debt
 
-- ~~Rates cache, so opening the portfolio doesn't fire ~90 requests (mostly WhiteBIT fixed plans).~~ ✅ 1.1.0: the worker caches rates.
 - release-it didn't attach the zip to the v0.0.4 release — find out from the next release's output.
 - Automatic release notes from commits (`releaseNotes` in `.release-it.json`).
-- ~~Filter MEXC's short promos (1–2 days) out of alerts.~~ ✅ 1.1.0: terms up to 14 days are promos with their own "🎁" alerts.
