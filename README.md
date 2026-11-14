@@ -59,6 +59,8 @@ To update, unzip the new release over the old directory and press the reload but
 
 While Chrome is running, the extension checks rates in the background (every 4 hours by default) and messages you
 when the best rate for a coin in your portfolio grows by at least 1 percentage point (configurable).
+Fixed terms shorter than 7 days (short promos) don't count, and there's no alert when the coin already sits on the
+exchange with the new best rate.
 
 1. Create a bot with [@BotFather](https://t.me/BotFather) and copy its token.
 2. Click the extension icon to open the settings and paste the token.

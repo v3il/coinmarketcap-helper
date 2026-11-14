@@ -1,6 +1,6 @@
 import { EXCHANGES, type Rate } from './exchanges';
 import {
-    currentApr, exchangeResolver, formatCoins, withoutExcluded, type ExchangeResolver
+    currentApr, exchangeResolver, formatCoins, isRealisticRate, withoutExcluded, type ExchangeResolver
 } from './holdings';
 import { getPortfolioSymbols } from './portfolio';
 import { loadRates, type ExchangeRates } from './rates';
@@ -23,7 +23,9 @@ interface Alert {
 const isBetter = (a: Rate, b: Rate | null) => !b || a.apr > b.apr || (a.apr === b.apr && a.days < b.days);
 
 function bestOf(snapshot: CoinSnapshot): BestRate | null {
-    return Object.values(snapshot).reduce<BestRate | null>((best, rate) => (isBetter(rate, best) ? rate : best), null);
+    // Baselines saved before short promos were ignored may still hold one; skip it.
+    return Object.values(snapshot).filter(isRealisticRate)
+        .reduce<BestRate | null>((best, rate) => (isBetter(rate, best) ? rate : best), null);
 }
 
 const term = (days: number, unbondingDays?: number) => {
@@ -157,7 +159,9 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
         const snapshot: CoinSnapshot = {};
 
         (byCoin.get(symbol) ?? []).forEach(({ exchange, rates }) => {
-            const best = rates.reduce<Rate | null>((acc, rate) => (isBetter(rate, acc) ? rate : acc), null);
+            // Short promos (MEXC 1–2 days at 600%) aren't rates you can keep coins at: no alerts for them.
+            const best = rates.filter(isRealisticRate)
+                .reduce<Rate | null>((acc, rate) => (isBetter(rate, acc) ? rate : acc), null);
 
             if (best) {
                 snapshot[exchange.id] = { ...best, exchangeId: exchange.id, exchangeName: exchange.name };
