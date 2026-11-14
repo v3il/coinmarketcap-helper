@@ -67,31 +67,58 @@
 /* "Set amount" on the Holdings cell. Button and editor are absolutely positioned: the row never changes height. */
 .cmc-helper-editable {
     position: relative;
+    /* Room for the small "+" after the amount; only the width changes, never the row height. */
+    padding-right: 30px !important;
 }
 
-/* Covers the whole Holdings cell; shows a centered pencil on hover. */
+/* Small "+" right after the amount (Holdings / Balance), vertically centered. */
 .cmc-helper-edit {
     position: absolute;
-    inset: -1px 0;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 18px;
+    height: 18px;
     margin: 0;
     padding: 0;
-    border: 1px solid rgba(128, 138, 157, 0.35);
-    border-radius: 8px;
-    /* Solid, so the amount underneath doesn't show through. */
-    background: #222531;
-    color: #e6e8ee;
-    font-size: 20px;
+    border: 1px solid rgba(128, 138, 157, 0.5);
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    /* The plus is drawn with two bars (a font glyph never sits exactly in the middle). */
+    font-size: 0;
     cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.15s;
+    opacity: 0.45;
+    transition: opacity 0.15s, background 0.15s;
+
+    &::before,
+    &::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 8px;
+        height: 1.5px;
+        border-radius: 1px;
+        background: currentColor;
+        transform: translate(-50%, -50%);
+    }
+
+    &::after {
+        transform: translate(-50%, -50%) rotate(90deg);
+    }
 }
 
 .cmc-helper-editable:hover .cmc-helper-edit,
 .cmc-helper-edit:focus-visible {
     opacity: 1;
+}
+
+.cmc-helper-edit:hover {
+    background: rgba(56, 97, 251, 0.25);
 }
 
 .cmc-helper-editor {
@@ -100,7 +127,7 @@
     top: 50%;
     right: 4px;
     transform: translateY(-50%);
-    width: 340px;
+    width: 400px;
     padding: 8px;
     border: 1px solid rgba(128, 138, 157, 0.4);
     border-radius: 10px;
@@ -146,6 +173,30 @@
         color: inherit;
         font-size: 13px;
         cursor: pointer;
+    }
+}
+
+.cmc-helper-editor__modes {
+    display: flex;
+    flex: none;
+    border: 1px solid rgba(128, 138, 157, 0.4);
+    border-radius: 6px;
+    overflow: hidden;
+
+    button.cmc-helper-editor__mode {
+        padding: 6px 8px;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        color: inherit;
+        font-size: 12px;
+        opacity: 0.6;
+        cursor: pointer;
+    }
+
+    button.cmc-helper-editor__mode--active {
+        background: rgba(56, 97, 251, 0.35);
+        opacity: 1;
     }
 }
 
