@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { EXCHANGES } from '@/lib/exchanges';
 import { guessExchange, NOT_AN_EXCHANGE } from '@/lib/holdings';
 import { BINGX_EARN_URL } from '@/lib/exchanges/bingx';
-import { BINGX_REFRESH_MESSAGE, CHECK_NOW_MESSAGE } from '@/lib/messages';
+import { BINGX_REFRESH_MESSAGE, CHECK_NOW_MESSAGE, DIGEST_NOW_MESSAGE } from '@/lib/messages';
 import { getPortfolioSymbols } from '@/lib/portfolio';
 import {
     bingxRatesItem,
@@ -19,6 +19,11 @@ import {
 import { findLatestChat, sendMessage } from '@/lib/telegram';
 
 type Notice = { kind: 'ok' | 'error'; text: string } | null;
+
+// Monday first; values are Date.getDay() numbers (0 = Sunday).
+const WEEKDAYS: [number, string][] = [
+    [1, 'Monday'], [2, 'Tuesday'], [3, 'Wednesday'], [4, 'Thursday'], [5, 'Friday'], [6, 'Saturday'], [0, 'Sunday']
+];
 
 const formatTime = (ms: number) => new Date(ms).toLocaleString();
 
@@ -88,6 +93,8 @@ export function App() {
             minPromoApr: Number.isFinite(form.minPromoApr)
                 ? Math.max(0, form.minPromoApr)
                 : DEFAULT_SETTINGS.minPromoApr,
+            weeklyDigest: form.weeklyDigest,
+            digestDay: form.digestDay,
             excludedPortfolios: form.excludedPortfolios,
             portfolioExchanges: form.portfolioExchanges
         };
@@ -174,6 +181,17 @@ export function App() {
         }
 
         return `Checked. ${status.message}`;
+    });
+
+    const onDigestNow = () => run(async () => {
+        await save();
+        const result: { ok: boolean; message: string } = await chrome.runtime.sendMessage({ type: DIGEST_NOW_MESSAGE });
+
+        if (!result.ok) {
+            throw new Error(result.message);
+        }
+
+        return result.message;
     });
 
     return (
@@ -349,12 +367,41 @@ export function App() {
                         </label>
                     </div>
 
+                    <div class="row">
+                        <label class="checkbox">
+                            <input
+                                type="checkbox"
+                                checked={form.weeklyDigest}
+                                onChange={(e) => update('weeklyDigest', e.currentTarget.checked)}
+                            />
+                            <span>Weekly summary</span>
+                        </label>
+
+                        <label>
+                            <span>Every</span>
+                            <select
+                                disabled={!form.weeklyDigest}
+                                value={form.digestDay}
+                                onChange={(e) => update('digestDay', Number(e.currentTarget.value))}
+                            >
+                                {WEEKDAYS.map(([day, name]) => <option key={day} value={day}>{name}</option>)}
+                            </select>
+                        </label>
+                    </div>
+                    <small class="note">
+                        Income now vs at the best rates, the best moves and running promos. Sent with the first check
+                        after 9:00.
+                    </small>
+
                     <div class="actions">
                         <button type="submit" class="primary" disabled={busy || !dirty}>Save</button>
                         <button type="button" disabled={busy || !form.botToken || !form.chatId} onClick={onTest}>
                             Send test message
                         </button>
                         <button type="button" disabled={busy} onClick={onCheckNow}>Check now</button>
+                        <button type="button" disabled={busy || !form.botToken || !form.chatId} onClick={onDigestNow}>
+                            Send summary now
+                        </button>
                     </div>
 
                     {notice && <p class={`notice notice--${notice.kind}`}>{notice.text}</p>}

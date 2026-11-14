@@ -73,6 +73,7 @@ export const bingx: Exchange = {
     id: 'bingx',
     name: 'BingX',
     logoUrl: 'https://s2.coinmarketcap.com/static/img/exchanges/64x64/1064.png',
+    local: true,
 
     async loadRates() {
         const saved = await loadSaved();

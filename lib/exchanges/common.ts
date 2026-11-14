@@ -38,6 +38,8 @@ export interface Exchange {
     id: string;
     name: string;
     logoUrl: string;
+    /** Rates come from extension storage, not the network (BingX): always read fresh, never cached. */
+    local?: boolean;
     loadRates(): Promise<CoinRates>;
 }
 

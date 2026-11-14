@@ -33,7 +33,9 @@ It can also watch those rates in the background and message you in **Telegram** 
   difference at the current price. On the overview, coins held in several portfolios let you pick which one to
   change. Tick 🎁 **Free** for staking rewards or airdrops: the buy is recorded at $0, so invested doesn't grow.
 - 🔔 **Telegram alerts** — a message when the best rate for one of your coins goes up, or a short high-rate promo
-  shows up.
+  shows up, plus a weekly summary of the best moves.
+- 🚀 **Fast** — rates are cached by the extension for 30 minutes, so the portfolio page doesn't wait for every
+  exchange each time; older rates show at once and refresh in the background.
 - ⚡ **No login, no API keys** — only public / website endpoints are used.
 - 🔒 **Private** — everything runs locally in your browser; nothing is sent anywhere except to the exchanges and,
   if you set it up, your own Telegram bot.
@@ -81,11 +83,14 @@ messages you about:
 - 🎁 **New promo** — a fixed term up to 14 days from 50% APR (both configurable, can be turned off), with the return
   for the term (5 days at 500% ≈ +6.8%). Each promo is announced once, again only if its rate goes up. Mind the
   per-user caps such promos usually have.
+- 📊 **Weekly summary** — once a week (Monday by default, with the first check after 9:00; can be turned off): what
+  your coins earn a year now and at the best rates, how many already sit at the best rate, the top 5 moves by gain
+  (`SOL · Bybit 2.10% → OKX 7.00%`) and the promos running. **Send summary now** sends one right away.
 
 Coins worth less than $10 in your portfolio (configurable) get no alerts, so a coin or two kept just to watch
-the price stays quiet. Portfolios unchecked in the settings are left out. Many alerts at once are split into several messages; whatever
-couldn't be sent is retried on the next check.
-
+the price stays quiet (the summary counts them in the totals, but suggests no moves for them). Portfolios unchecked
+in the settings are left out. Many alerts at once are split into several messages; whatever couldn't be sent is
+retried on the next check.
 
 1. Create a bot with [@BotFather](https://t.me/BotFather) and copy its token.
 2. Click the extension icon to open the settings and paste the token.
@@ -115,8 +120,8 @@ npm run lint && npm run compile
 - `entrypoints/content/` — renders the Earn column, totals banner and Set amount on the CMC portfolio page.
 - `entrypoints/bingx-*.content.ts` + `lib/bingxRefresh.ts` — read BingX rates from its Earn page (the page's own
   request) and refresh them in a background tab.
-- `entrypoints/background.ts` — proxies requests for the content script and runs the scheduled Telegram checks
-  (`lib/notifier.ts`).
+- `entrypoints/background.ts` — loads and caches rates for the CMC page (`lib/ratesCache.ts`), proxies requests
+  for the content script and runs the scheduled Telegram checks (`lib/notifier.ts`, `lib/digest.ts`).
 - `entrypoints/options/` — settings page (Preact).
 
 ### Releasing

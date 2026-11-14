@@ -8,7 +8,9 @@ import { whitebit } from './whitebit';
 import type { Exchange } from './common';
 
 export { effectiveApr } from './common';
-export type { Exchange, Rate, RateTier } from './common';
+export type {
+    CoinRates, Exchange, Rate, RateTier
+} from './common';
 
 /** To add an exchange: create a module exporting an `Exchange` and list it here. */
 export const EXCHANGES: Exchange[] = [binance, bybit, okx, mexc, whitebit, bingx, ready];

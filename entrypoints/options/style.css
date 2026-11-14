@@ -71,6 +71,7 @@ label {
 }
 
 input,
+select,
 button {
     padding: 9px 14px;
     border: 1px solid var(--border);
@@ -137,8 +138,14 @@ label.checkbox {
     }
 }
 
-input:disabled {
+input:disabled,
+select:disabled {
     opacity: 0.45;
+}
+
+/* A note under a row of fields: closer to it than the form's gap. */
+small.note {
+    margin-top: -10px;
 }
 
 .actions {

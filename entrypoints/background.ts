@@ -4,19 +4,22 @@ import {
     BINGX_RATES_MESSAGE,
     BINGX_REFRESH_MESSAGE,
     CHECK_NOW_MESSAGE,
+    DIGEST_NOW_MESSAGE,
     HOLDINGS_MESSAGE,
     PAGE_SETTINGS_CHANGED_MESSAGE,
     PAGE_SETTINGS_MESSAGE,
     PORTFOLIO_MESSAGE,
     PORTFOLIO_NAMES_MESSAGE,
+    RATES_MESSAGE,
     type BingxProductsMessage,
     type HoldingsMessage,
     type PageSettings,
     type PortfolioMessage,
     type PortfolioNamesMessage
 } from '@/lib/messages';
-import { checkRates } from '@/lib/notifier';
+import { checkRates, sendDigestNow } from '@/lib/notifier';
 import { rememberPortfolioSymbols } from '@/lib/portfolio';
+import { getRates, PAGE_MAX_AGE_MS } from '@/lib/ratesCache';
 import {
     bingxRatesItem, getSettings, holdingsItem, knownPortfoliosItem, settingsItem
 } from '@/lib/storage';
@@ -57,6 +60,16 @@ export default defineBackground(() => {
             const { url, init } = message as FetchRequest;
             fetchDirect(url, init).then(sendResponse);
             return true; // async response
+        }
+
+        if (message?.type === RATES_MESSAGE) {
+            getRates(PAGE_MAX_AGE_MS, true).then(sendResponse);
+            return true;
+        }
+
+        if (message?.type === DIGEST_NOW_MESSAGE) {
+            sendDigestNow().then(sendResponse);
+            return true;
         }
 
         if (message?.type === CHECK_NOW_MESSAGE) {

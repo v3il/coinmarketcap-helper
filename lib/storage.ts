@@ -14,6 +14,10 @@ export interface Settings {
     /** Also notify about short promos (fixed terms of 14 days or less) from this APR, %. */
     promoAlerts: boolean;
     minPromoApr: number;
+    /** A weekly Telegram summary: income now vs at the best rates, the best moves, running promos. */
+    weeklyDigest: boolean;
+    /** Day of the week for the summary, 0 = Sunday (Date.getDay); sent with the first check after 9:00. */
+    digestDay: number;
     /** Refresh BingX rates before each check by opening its Earn page in a background tab for a few seconds. */
     bingxAutoRefresh: boolean;
     /** CMC portfolio names left out of the totals banner (e.g. savings), matched case-insensitively. */
@@ -30,6 +34,8 @@ export const DEFAULT_SETTINGS: Settings = {
     minPositionUsd: 10,
     promoAlerts: true,
     minPromoApr: 50,
+    weeklyDigest: true,
+    digestDay: 1,
     bingxAutoRefresh: false,
     excludedPortfolios: [],
     portfolioExchanges: {}
@@ -94,5 +100,19 @@ export interface BingxRates {
 
 /** Also read directly as chrome.storage.local 'bingxRates' in lib/exchanges/bingx.ts. */
 export const bingxRatesItem = storage.defineItem<BingxRates | null>('local:bingxRates', { fallback: null });
+
+/** Exchange id -> its rates as last loaded (lib/ratesCache.ts): lower-case symbol -> rates. */
+export interface CachedExchangeRates {
+    at: number;
+    coins: Record<string, Rate[]>;
+}
+
+export const ratesCacheItem = storage.defineItem<Record<string, CachedExchangeRates>>(
+    'local:ratesCache',
+    { fallback: {} }
+);
+
+/** When the weekly summary was last sent (ms). */
+export const lastDigestItem = storage.defineItem<number | null>('local:lastDigest', { fallback: null });
 
 export const lastCheckItem = storage.defineItem<CheckStatus | null>('local:lastCheck', { fallback: null });

@@ -53,3 +53,9 @@ export interface HoldingsMessage {
     /** Lower-case symbol -> positions (portfolio name, USD value). */
     holdings: Record<string, { portfolio: string; value: number; balance?: number }[]>;
 }
+
+/** Content script (CMC) → worker: exchange rates, from the worker's cache or loaded now (SerializedRates). */
+export const RATES_MESSAGE = 'cmc-helper:rates';
+
+/** Settings page → worker: send the weekly summary now; responds with CheckStatus-like { ok, message }. */
+export const DIGEST_NOW_MESSAGE = 'cmc-helper:digest-now';

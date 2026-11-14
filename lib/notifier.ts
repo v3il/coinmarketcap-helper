@@ -3,12 +3,14 @@ import {
     currentApr, exchangeResolver, formatCoins, isRealisticRate, isShortTerm, withoutExcluded, type ExchangeResolver
 } from './holdings';
 import { getPortfolioSymbols } from './portfolio';
-import { loadRates, type ExchangeRates } from './rates';
+import type { ExchangeRates } from './rates';
+import { CHECK_MAX_AGE_MS, loadCachedRates } from './ratesCache';
 import {
     getSettings, holdingsItem, knownPromosItem, knownRatesItem, lastCheckItem,
     type BestRate, type CheckStatus, type CoinSnapshot
 } from './storage';
 import { refreshBingx } from './bingxRefresh';
+import { isDigestDue, sendDigest, usd } from './digest';
 import { escapeHtml, sendMessage } from './telegram';
 
 /** A short fixed-term offer (promo) worth a look: announced once, again only if its APR goes up. */
@@ -50,10 +52,6 @@ const term = (days: number, unbondingDays?: number) => {
 const describe = ({ apr, days, unbondingDays, exchangeName }: BestRate) => (
     `${apr.toFixed(2)}% · ${escapeHtml(exchangeName)} · ${term(days, unbondingDays)}`
 );
-
-const usd = (value: number) => new Intl.NumberFormat('en-US', {
-    style: 'currency', currency: 'USD', maximumFractionDigits: value < 10 ? 2 : 0
-}).format(value);
 
 /**
  * "💼 Bybit: ~0.10% = $0.30/yr → +$22/yr on Binance" for every place where the best rate would earn
@@ -182,7 +180,8 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
         await refreshBingx();
     }
 
-    const { byCoin, failed } = await loadRates(EXCHANGES);
+    const loaded = await loadCachedRates(CHECK_MAX_AGE_MS);
+    const { byCoin, failed } = loaded;
     const failedExchanges = failed.map((exchange) => exchange.name);
 
     if (failed.length === EXCHANGES.length) {
@@ -315,6 +314,18 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
     await knownRatesItem.setValue(next);
     await knownPromosItem.setValue(nextPromos);
 
+    // The weekly summary goes with the first check after its time; if Telegram fails, the next check retries.
+    if (ok && await isDigestDue(settings)) {
+        try {
+            if (await sendDigest(settings, loaded)) {
+                message += ', weekly summary sent';
+            }
+        } catch (error) {
+            ok = false;
+            message = `Failed to send the weekly summary: ${(error as Error).message}`;
+        }
+    }
+
     return { ok, message, failedExchanges };
 }
 
@@ -338,4 +349,22 @@ export function checkRates(): Promise<CheckStatus> {
     });
 
     return running;
+}
+
+/** "Send summary now" on the settings page. */
+export async function sendDigestNow(): Promise<{ ok: boolean; message: string }> {
+    try {
+        const settings = await getSettings();
+
+        if (!settings.botToken || !settings.chatId) {
+            return { ok: false, message: 'Telegram is not configured' };
+        }
+
+        const sent = await sendDigest(settings, await loadCachedRates(CHECK_MAX_AGE_MS, true));
+        return sent
+            ? { ok: true, message: 'Summary sent' }
+            : { ok: false, message: 'Nothing to sum up yet — open your portfolio on CoinMarketCap' };
+    } catch (error) {
+        return { ok: false, message: (error as Error).message };
+    }
 }

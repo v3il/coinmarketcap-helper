@@ -1,14 +1,14 @@
-import { EXCHANGES } from '@/lib/exchanges';
 import { exchangeResolver, withoutExcluded } from '@/lib/holdings';
 import {
     HOLDINGS_MESSAGE,
     PAGE_SETTINGS_CHANGED_MESSAGE,
     PORTFOLIO_MESSAGE,
+    RATES_MESSAGE,
     type HoldingsMessage,
     type PageSettings,
     type PortfolioMessage
 } from '@/lib/messages';
-import { loadRates, type LoadedRates } from '@/lib/rates';
+import { deserializeRates, type LoadedRates, type SerializedRates } from '@/lib/rates';
 import { renderAmountEditors } from './amountEditor';
 import type { PortfolioSnapshot } from './cmcApi';
 import { invalidateHoldings, loadHoldings } from './holdings';
@@ -19,12 +19,18 @@ import {
 import { invalidateTotals, renderTotalsBanner } from './totals';
 import './styles.css';
 
+/** Rates come from the worker, which caches them for a while (lib/ratesCache.ts). */
+async function requestRates(): Promise<LoadedRates> {
+    const response: SerializedRates | undefined = await chrome.runtime.sendMessage({ type: RATES_MESSAGE });
+    return deserializeRates(response ?? { loaded: [], failed: [] });
+}
+
 const isPortfolioPage = () => window.location.pathname.startsWith('/portfolio-tracker');
 
 export function main() {
     // CoinMarketCap is an SPA, so the script runs on every page and loads rates lazily,
     // the first time a portfolio table shows up (or right away on a direct portfolio visit).
-    let rates: Promise<LoadedRates> | undefined = isPortfolioPage() ? loadRates(EXCHANGES) : undefined;
+    let rates: Promise<LoadedRates> | undefined = isPortfolioPage() ? requestRates() : undefined;
     let reportedSymbols = '';
     let scheduled = false;
 
@@ -99,7 +105,7 @@ export function main() {
         reportPortfolio();
         renderTotalsBanner();
         refreshData();
-        rates ??= loadRates(EXCHANGES);
+        rates ??= requestRates();
 
         const hidden = areBalancesHidden();
 
