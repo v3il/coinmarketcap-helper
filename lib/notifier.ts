@@ -193,6 +193,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
     const nextPromos: Record<string, number> = {};
     const promos: (Promo & { key: string })[] = [];
     const holdings = await holdingsItem.getValue();
+    const holdingsKnown = Object.keys(holdings).length > 0;
     const resolve = exchangeResolver(settings.portfolioExchanges);
     const next: Record<string, CoinSnapshot> = {};
     const alerts: Alert[] = [];
@@ -225,9 +226,10 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
             }
         });
 
-        // Coins kept just to watch the price (a coin or two): baselines move on, but no alerts. Coins whose
-        // positions aren't known yet (holdings not reported) still get them.
-        const tooSmall = symbol in holdings
+        // Coins kept just to watch the price (a coin or two), or not held at all any more (still in the list of
+        // seen coins, but in no portfolio): baselines move on, but no alerts. Before CMC has reported any positions
+        // at all, every coin gets them.
+        const tooSmall = holdingsKnown
             && places.reduce((sum, place) => sum + place.value, 0) < settings.minPositionUsd;
 
         const offers = (byCoin.get(symbol) ?? [])

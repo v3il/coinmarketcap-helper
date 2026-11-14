@@ -87,7 +87,7 @@ messages you about:
   your coins earn a year now and at the best rates, how many already sit at the best rate, the top 5 moves by gain
   (`SOL · Bybit 2.10% → OKX 7.00%`) and the promos running. **Send summary now** sends one right away.
 
-Coins worth less than $10 in your portfolio (configurable) get no alerts, so a coin or two kept just to watch
+Coins worth less than $10 in your portfolio (configurable), or no longer held at all, get no alerts, so a coin or two kept just to watch
 the price stays quiet (the summary counts them in the totals, but suggests no moves for them). Portfolios unchecked
 in the settings are left out. Many alerts at once are split into several messages; whatever couldn't be sent is
 retried on the next check.
