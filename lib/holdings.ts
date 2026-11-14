@@ -1,4 +1,4 @@
-import { EXCHANGES, type Exchange } from './exchanges';
+import { effectiveApr, EXCHANGES, type Exchange } from './exchanges';
 import type { ExchangeRates } from './rates';
 
 /** A coin's position in one CMC portfolio. */
@@ -19,6 +19,12 @@ export type PortfolioExchanges = Record<string, string>;
 
 /** Settings value for a portfolio that isn't on a supported exchange (wallet, other exchange, savings…). */
 export const NOT_AN_EXCHANGE = 'none';
+
+/** Drops positions in portfolios the user unchecked in the settings (not counted in totals, income or alerts). */
+export function withoutExcluded<T extends { portfolio: string }>(holdings: T[], excluded: string[] = []): T[] {
+    const names = new Set(excluded.map((name) => name.trim().toLowerCase()));
+    return holdings.filter(({ portfolio }) => !names.has(portfolio.trim().toLowerCase()));
+}
 
 const normalize = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -45,8 +51,14 @@ export function exchangeResolver(choices: PortfolioExchanges = {}): ExchangeReso
     };
 }
 
-/** Fixed terms shorter than this are usually promos (MEXC 1–2 days at 600%), so they don't count as "best". */
-const MIN_FIXED_DAYS_FOR_INCOME = 7;
+/** Fixed terms up to this many days are short promos (MEXC 2 days at 600%): they don't count as "best". */
+export const SHORT_TERM_MAX_DAYS = 14;
+
+/** A short fixed-term offer (1–14 days): a promo, not a rate to keep coins at. */
+export const isShortTerm = ({ days }: { days: number }) => days > 0 && days <= SHORT_TERM_MAX_DAYS;
+
+/** Flexible, or fixed for longer than two weeks: a rate you can actually keep coins at. */
+export const isRealisticRate = (rate: { days: number }) => !isShortTerm(rate);
 
 export interface IncomeRate {
     apr: number;
@@ -54,13 +66,18 @@ export interface IncomeRate {
     exchange: Exchange;
 }
 
-/** The best realistic rate for a coin: flexible, or fixed for at least a week. */
-export function bestIncomeRate(list: ExchangeRates[] = []): IncomeRate | null {
+/**
+ * The best realistic rate for a coin: flexible, or fixed for longer than two weeks. With `amount`, tiered rates
+ * count at what that amount actually earns (BingX: 8% only up to 300 USDT).
+ */
+export function bestIncomeRate(list: ExchangeRates[] | undefined, amount?: number | null): IncomeRate | null {
     let best: IncomeRate | null = null;
 
-    list.forEach(({ exchange, rates }) => rates.forEach(({ apr, days }) => {
-        if ((days === 0 || days >= MIN_FIXED_DAYS_FOR_INCOME) && (!best || apr > best.apr)) {
-            best = { apr, days, exchange };
+    (list ?? []).forEach(({ exchange, rates }) => rates.forEach((rate) => {
+        const apr = effectiveApr(rate, amount);
+
+        if (isRealisticRate(rate) && (!best || apr > best.apr)) {
+            best = { apr, days: rate.days, exchange };
         }
     }));
 
@@ -72,9 +89,9 @@ export function bestIncomeRate(list: ExchangeRates[] = []): IncomeRate | null {
  * the best rate their exchange offers, e.g. WhiteBIT 30d when there's no flexible plan).
  * Wallets, unknown places and exchanges without an earn product for the coin count as 0%.
  */
-export function currentApr(exchange: Exchange | null, list: ExchangeRates[] = []): number {
-    const own = exchange ? list.filter((item) => item.exchange.id === exchange.id) : [];
-    return bestIncomeRate(own)?.apr ?? 0;
+export function currentApr(exchange: Exchange | null, list: ExchangeRates[] | undefined, amount?: number | null) {
+    const own = exchange && list ? list.filter((item) => item.exchange.id === exchange.id) : [];
+    return bestIncomeRate(own, amount)?.apr ?? 0;
 }
 
 export interface Income {
@@ -83,16 +100,36 @@ export interface Income {
     now: number;
     /** USD per year if everything earned the best rate. */
     best: number;
+    /** The same in coins per year; null when the coin amounts aren't known. */
+    nowCoins: number | null;
+    bestCoins: number | null;
     bestRate: IncomeRate | null;
 }
 
 export function estimateIncome(holdings: Holding[], list: ExchangeRates[], resolve: ExchangeResolver): Income {
-    const bestRate = bestIncomeRate(list);
-    const value = holdings.reduce((sum, holding) => sum + holding.value, 0);
-    const now = holdings.reduce(
-        (sum, holding) => sum + (holding.value * currentApr(resolve(holding.portfolio), list)) / 100,
-        0
-    );
+    const knownAmounts = holdings.every((holding) => holding.balance !== undefined);
+    const amount = holdings.reduce((sum, holding) => sum + (holding.balance ?? 0), 0);
 
-    return { value, now, best: bestRate ? Math.max(now, (value * bestRate.apr) / 100) : now, bestRate };
+    // Tiered rates: each position earns what its own amount gets; "best" is for everything moved to one place.
+    const bestRate = bestIncomeRate(list, knownAmounts ? amount : null);
+    const aprs = holdings.map((holding) => currentApr(resolve(holding.portfolio), list, holding.balance));
+    const value = holdings.reduce((sum, holding) => sum + holding.value, 0);
+    const now = holdings.reduce((sum, holding, i) => sum + (holding.value * aprs[i]) / 100, 0);
+    const nowCoins = knownAmounts
+        ? holdings.reduce((sum, holding, i) => sum + ((holding.balance ?? 0) * aprs[i]) / 100, 0)
+        : null;
+    const bestCoins = knownAmounts && nowCoins !== null
+        ? Math.max(nowCoins, bestRate ? (amount * bestRate.apr) / 100 : 0)
+        : null;
+
+    const best = bestRate ? Math.max(now, (value * bestRate.apr) / 100) : now;
+
+    return { value, now, best, nowCoins, bestCoins, bestRate };
+}
+
+/** Coin amounts for income lines: "1,234", "12.35", "0.0421". */
+export function formatCoins(amount: number): string {
+    if (amount >= 100) return Math.round(amount).toLocaleString('en-US');
+    if (amount >= 1) return amount.toFixed(2);
+    return amount === 0 ? '0' : amount.toPrecision(3);
 }

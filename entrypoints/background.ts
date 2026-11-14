@@ -1,19 +1,27 @@
+import { refreshBingx, saveBingxProducts } from '@/lib/bingxRefresh';
 import {
+    BINGX_PRODUCTS_MESSAGE,
+    BINGX_RATES_MESSAGE,
+    BINGX_REFRESH_MESSAGE,
     CHECK_NOW_MESSAGE,
+    DIGEST_NOW_MESSAGE,
     HOLDINGS_MESSAGE,
     PAGE_SETTINGS_CHANGED_MESSAGE,
     PAGE_SETTINGS_MESSAGE,
     PORTFOLIO_MESSAGE,
     PORTFOLIO_NAMES_MESSAGE,
+    RATES_MESSAGE,
+    type BingxProductsMessage,
     type HoldingsMessage,
     type PageSettings,
     type PortfolioMessage,
     type PortfolioNamesMessage
 } from '@/lib/messages';
-import { checkRates } from '@/lib/notifier';
+import { checkRates, sendDigestNow } from '@/lib/notifier';
 import { rememberPortfolioSymbols } from '@/lib/portfolio';
+import { getRates, PAGE_MAX_AGE_MS } from '@/lib/ratesCache';
 import {
-    getSettings, holdingsItem, knownPortfoliosItem, settingsItem
+    bingxRatesItem, getSettings, holdingsItem, knownPortfoliosItem, settingsItem
 } from '@/lib/storage';
 import { FETCH_MESSAGE, fetchDirect, type FetchRequest } from '@/utils/request';
 
@@ -54,6 +62,16 @@ export default defineBackground(() => {
             return true; // async response
         }
 
+        if (message?.type === RATES_MESSAGE) {
+            getRates(PAGE_MAX_AGE_MS, true).then(sendResponse);
+            return true;
+        }
+
+        if (message?.type === DIGEST_NOW_MESSAGE) {
+            sendDigestNow().then(sendResponse);
+            return true;
+        }
+
         if (message?.type === CHECK_NOW_MESSAGE) {
             checkRates().then(sendResponse);
             return true;
@@ -82,6 +100,21 @@ export default defineBackground(() => {
             }
 
             return false;
+        }
+
+        if (message?.type === BINGX_PRODUCTS_MESSAGE) {
+            saveBingxProducts((message as BingxProductsMessage).result);
+            return false;
+        }
+
+        if (message?.type === BINGX_REFRESH_MESSAGE) {
+            refreshBingx().then(sendResponse);
+            return true;
+        }
+
+        if (message?.type === BINGX_RATES_MESSAGE) {
+            bingxRatesItem.getValue().then(sendResponse);
+            return true;
         }
 
         if (message?.type === PAGE_SETTINGS_MESSAGE) {
