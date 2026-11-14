@@ -25,6 +25,20 @@ const WEEKDAYS: [number, string][] = [
     [1, 'Monday'], [2, 'Tuesday'], [3, 'Wednesday'], [4, 'Thursday'], [5, 'Friday'], [6, 'Saturday'], [0, 'Sunday']
 ];
 
+/**
+ * Asks the background worker. No answer means the worker running in Chrome is older than this page
+ * (the extension's files were updated, but the extension wasn't reloaded).
+ */
+async function askWorker<T>(type: string): Promise<T> {
+    const response: T | undefined = await chrome.runtime.sendMessage({ type });
+
+    if (response === undefined) {
+        throw new Error('The extension didn’t answer. Reload it on chrome://extensions and try again.');
+    }
+
+    return response;
+}
+
 const formatTime = (ms: number) => new Date(ms).toLocaleString();
 
 export function App() {
@@ -150,7 +164,7 @@ export function App() {
 
     const onRefreshBingx = async () => {
         setBingxNotice({ kind: 'ok', text: 'Loading BingX in a background tab…' });
-        const ok: boolean = await chrome.runtime.sendMessage({ type: BINGX_REFRESH_MESSAGE });
+        const ok = await askWorker<boolean>(BINGX_REFRESH_MESSAGE).catch(() => false);
         setBingxNotice(ok
             ? { kind: 'ok', text: 'Rates updated' }
             : { kind: 'error', text: 'BingX didn’t load the rates. Open the Earn page yourself and try again.' });
@@ -174,7 +188,7 @@ export function App() {
 
     const onCheckNow = () => run(async () => {
         await save();
-        const status: CheckStatus = await chrome.runtime.sendMessage({ type: CHECK_NOW_MESSAGE });
+        const status = await askWorker<CheckStatus>(CHECK_NOW_MESSAGE);
 
         if (!status.ok) {
             throw new Error(status.message);
@@ -185,7 +199,7 @@ export function App() {
 
     const onDigestNow = () => run(async () => {
         await save();
-        const result: { ok: boolean; message: string } = await chrome.runtime.sendMessage({ type: DIGEST_NOW_MESSAGE });
+        const result = await askWorker<{ ok: boolean; message: string }>(DIGEST_NOW_MESSAGE);
 
         if (!result.ok) {
             throw new Error(result.message);
