@@ -23,7 +23,7 @@ It can also watch those rates in the background and message you in **Telegram** 
   through swaps isn't counted twice (unlike CoinMarketCap's cost basis). Amounts stay hidden when you hide balances
   in CoinMarketCap.
 - 💼 **Where your coins sit** — the Earn column marks the exchange (or wallet) each coin is held on and estimates
-  your yearly income in coins, now vs. at the best rate (`≈ 12.3 FET/yr → 141 FET/yr`). "Now" is the best rate of
+  your yearly income in coins, now vs. at the best rate (`≈ 1.5 FET/yr → 9.8 FET/yr`). "Now" is the best rate of
   the exchange the coin sits on; fixed terms up to 14 days (short promos) don't count as "best".
 - 🗂️ **Portfolio settings** — each CoinMarketCap portfolio is mapped to an exchange (guessed from its name until you
   pick). Portfolios that aren't investments (e.g. savings) can be unchecked (**Counted**): they're left out of the
