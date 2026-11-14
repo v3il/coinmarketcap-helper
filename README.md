@@ -18,20 +18,21 @@ It can also watch those rates in the background and message you in **Telegram** 
   `7d`, `30d`… for fixed-term products (up to 60 days on Binance and WhiteBIT).
 - 🏆 **Best offer first** — exchanges are sorted by their best rate; the best flexible rate is highlighted in blue,
   the best fixed-term rate in green.
-- 📊 **Portfolio totals** — a banner at the top of the portfolio page with net invested, current value and all-time
-  profit/loss across all your portfolios, on every portfolio page. Net invested = value − profit/loss, so money
-  moved between coins through swaps isn't counted twice (unlike CoinMarketCap's cost basis). Portfolios that
-  aren't investments (e.g. savings) can be unchecked in the settings; they're then left out of the income estimate
-  and Telegram alerts too. Amounts stay hidden
-  when you hide balances in CoinMarketCap.
+- 📊 **Portfolio totals** — a banner at the top of every portfolio page with net invested, current value and
+  all-time profit/loss across all your portfolios. Net invested = value − profit/loss, so money moved between coins
+  through swaps isn't counted twice (unlike CoinMarketCap's cost basis). Amounts stay hidden when you hide balances
+  in CoinMarketCap.
 - 💼 **Where your coins sit** — the Earn column marks the exchange (or wallet) each coin is held on and estimates
-  your yearly income now vs. at the best rate (`≈ $12/yr → $141/yr`). Each CoinMarketCap portfolio is mapped to an
-  exchange in the settings (guessed from its name until you pick).
-- ✏️ **Set amount** — press the small + next to a coin's Holdings (or Balance on the overview) and type the whole number of
-  coins you have now; the extension adds a buy or sell for the difference at the current price (after you confirm).
-  On the overview, coins held in several portfolios let you pick which one to change. Tick 🎁 Free for staking rewards or
-  airdrops: the buy is recorded at $0, so invested doesn't grow.
-- 🔔 **Telegram alerts** — get a message when the best rate for one of your coins goes up, or a short high-rate promo
+  your yearly income in coins, now vs. at the best rate (`≈ 12.3 FET/yr → 141 FET/yr`). "Now" is the best rate of
+  the exchange the coin sits on; fixed terms up to 14 days (short promos) don't count as "best".
+- 🗂️ **Portfolio settings** — each CoinMarketCap portfolio is mapped to an exchange (guessed from its name until you
+  pick). Portfolios that aren't investments (e.g. savings) can be unchecked (**Counted**): they're left out of the
+  totals, the income estimate and Telegram alerts.
+- ✏️ **Set amount** — press the small **+** next to a coin's Holdings (or Balance on the overview) and type either
+  the new total or just the change (**±**: `+12`, `-5`), in whole coins. The extension adds a buy or sell for the
+  difference at the current price. On the overview, coins held in several portfolios let you pick which one to
+  change. Tick 🎁 **Free** for staking rewards or airdrops: the buy is recorded at $0, so invested doesn't grow.
+- 🔔 **Telegram alerts** — a message when the best rate for one of your coins goes up, or a short high-rate promo
   shows up.
 - ⚡ **No login, no API keys** — only public / website endpoints are used.
 - 🔒 **Private** — everything runs locally in your browser; nothing is sent anywhere except to the exchanges and,
@@ -71,11 +72,19 @@ it reads the product list the [Earn page](https://bingx.com/en/wealth/earn) load
 
 ## 🔔 Telegram alerts
 
-While Chrome is running, the extension checks rates in the background (every 4 hours by default) and messages you
-when the best rate for a coin in your portfolio grows by at least 1 percentage point (configurable).
-Fixed terms up to 14 days are treated as promos: they don't count as the best rate. Instead, a new promo from 50% APR
-(configurable, can be turned off) gets its own message with the return for the term. There's no "best rate" alert when
-the coin already sits on the exchange with the new best rate.
+While Chrome is running, the extension checks rates in the background (every 4 hours by default, configurable) and
+messages you about:
+
+- 📈 **New best rate** — the best rate for a coin in your portfolio grew by at least 1 percentage point
+  (configurable). The message says where the coin is held now (`📍 Now on: Bybit, Keplr`) and how much more it would
+  earn a year at the best rate, in coins. No alert when the coin already sits on the exchange with the new best rate.
+- 🎁 **New promo** — a fixed term up to 14 days from 50% APR (both configurable, can be turned off), with the return
+  for the term (5 days at 500% ≈ +6.8%). Each promo is announced once, again only if its rate goes up. Mind the
+  per-user caps such promos usually have.
+
+Portfolios unchecked in the settings are left out. Many alerts at once are split into several messages; whatever
+couldn't be sent is retried on the next check.
+
 
 1. Create a bot with [@BotFather](https://t.me/BotFather) and copy its token.
 2. Click the extension icon to open the settings and paste the token.
@@ -99,9 +108,12 @@ npm run lint && npm run compile
 ```
 
 - `lib/exchanges/` — one module per exchange. Each exports an `Exchange` (`id`, `name`, `logoUrl`, `loadRates()`)
-  whose `loadRates()` returns `Map<symbol, { apr, days }[]>` (`days: 0` = flexible). To add an exchange, create
+  whose `loadRates()` returns `Map<symbol, Rate[]>`: `{ apr, days }` (`days: 0` = flexible), optionally
+  `unbondingDays` (open-ended staking) and `tiers` (rate depends on the amount). To add an exchange, create
   a module, list it in `lib/exchanges/index.ts` and add its API host to `host_permissions` in `wxt.config.ts`.
-- `entrypoints/content/` — renders the Earn column on the CMC portfolio page.
+- `entrypoints/content/` — renders the Earn column, totals banner and Set amount on the CMC portfolio page.
+- `entrypoints/bingx-*.content.ts` + `lib/bingxRefresh.ts` — read BingX rates from its Earn page (the page's own
+  request) and refresh them in a background tab.
 - `entrypoints/background.ts` — proxies requests for the content script and runs the scheduled Telegram checks
   (`lib/notifier.ts`).
 - `entrypoints/options/` — settings page (Preact).
