@@ -61,7 +61,9 @@ export const knownRatesItem = storage.defineItem<Record<string, CoinSnapshot>>('
 export const knownPortfoliosItem = storage.defineItem<string[]>('local:knownPortfolios', { fallback: [] });
 
 /** Lower-case coin symbol -> positions (portfolio name, USD value), as last seen on CMC; for personal alerts. */
-export const holdingsItem = storage.defineItem<Record<string, { portfolio: string; value: number }[]>>(
+type StoredHolding = { portfolio: string; value: number; balance?: number };
+
+export const holdingsItem = storage.defineItem<Record<string, StoredHolding[]>>(
     'local:holdings',
     { fallback: {} }
 );

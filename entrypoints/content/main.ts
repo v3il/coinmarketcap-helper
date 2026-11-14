@@ -1,5 +1,5 @@
 import { EXCHANGES } from '@/lib/exchanges';
-import { exchangeResolver } from '@/lib/holdings';
+import { exchangeResolver, withoutExcluded } from '@/lib/holdings';
 import {
     HOLDINGS_MESSAGE,
     PAGE_SETTINGS_CHANGED_MESSAGE,
@@ -47,11 +47,11 @@ export function main() {
         }
     };
 
-    // Only portfolio names and values go to the worker (for alerts), not the exact amounts.
+    // Positions for personal Telegram alerts (kept in the extension's local storage).
     const reportHoldings = (value: PortfolioSnapshot) => {
         const holdings = Object.fromEntries([...value.holdings].map(([symbol, places]) => [
             symbol,
-            places.map(({ portfolio, value: usd }) => ({ portfolio, value: usd }))
+            places.map(({ portfolio, value: usd, balance }) => ({ portfolio, value: usd, balance }))
         ]));
         const message: HoldingsMessage = { type: HOLDINGS_MESSAGE, holdings };
         chrome.runtime.sendMessage(message).catch(() => {});
@@ -107,9 +107,18 @@ export function main() {
             renderAmountEditors({ snapshot, hidden, onAdded: refreshAfterTransaction });
         }
 
+        // Read holdings, settings and version only after the await: they may arrive meanwhile, and the version
+        // must match the data rendered with it (cells with the current version are never re-rendered).
+        const { byCoin } = await rates;
+
+        // Unchecked portfolios don't count in the income estimate either.
+        const excluded = settings?.excludedPortfolios ?? [];
+        const counted = snapshot && new Map([...snapshot.holdings]
+            .map(([symbol, places]) => [symbol, withoutExcluded(places, excluded)]));
+
         renderEarnColumn({
-            rates: (await rates).byCoin,
-            holdings: snapshot?.holdings ?? null,
+            rates: byCoin,
+            holdings: counted,
             resolveExchange: exchangeResolver(settings?.portfolioExchanges),
             hidden,
             version: `${version}|${hidden}`

@@ -1,6 +1,6 @@
 import type { Rate } from '@/lib/exchanges';
 import {
-    estimateIncome, type ExchangeResolver, type Holding, type HoldingsByCoin, type IncomeRate
+    estimateIncome, formatCoins, type ExchangeResolver, type Holding, type HoldingsByCoin, type IncomeRate
 } from '@/lib/holdings';
 import { flexibleApr, type ExchangeRates, type RatesByCoin } from '@/lib/rates';
 import { h } from './dom';
@@ -146,12 +146,12 @@ function createCell(symbol: string, context: EarnContext) {
         'td',
         { class: CELL_CLASS, 'data-symbol': symbol },
         ...rows,
-        createIncome(holdings, exchangeRates, context)
+        createIncome(symbol, holdings, exchangeRates, context)
     );
 }
 
 /** "≈ $12/yr → $141/yr": yearly income now vs. at the best realistic rate. */
-function createIncome(holdings: Holding[], exchangeRates: ExchangeRates[], context: EarnContext) {
+function createIncome(symbol: string, holdings: Holding[], exchangeRates: ExchangeRates[], context: EarnContext) {
     if (holdings.length === 0) {
         return null;
     }
@@ -169,9 +169,15 @@ function createIncome(holdings: Holding[], exchangeRates: ExchangeRates[], conte
         rate ? `${rate.exchange.name} ${term(rate.days)} ${rate.apr.toFixed(2)}%` : ''
     );
 
+    // Coins per year (that's what lands in the wallet); USD only if the amounts aren't known.
+    const ticker = symbol.toUpperCase();
+    const amount = (coins: number | null, usdValue: number) => (
+        coins === null ? `${usd(usdValue)}/yr` : `${formatCoins(coins)} ${ticker}/yr`
+    );
+
     const text = context.hidden
         ? `≈ ${nowPercent.toFixed(2)}%${better ? ` → ${bestPercent.toFixed(2)}%` : ''} a year`
-        : `≈ ${usd(income.now)}/yr${better ? ` → ${usd(income.best)}/yr` : ''}`;
+        : `≈ ${amount(income.nowCoins, income.now)}${better ? ` → ${amount(income.bestCoins, income.best)}` : ''}`;
 
     return h(
         'div',

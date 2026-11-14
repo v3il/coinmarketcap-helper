@@ -151,14 +151,15 @@ export function App() {
                 <h2>Portfolios</h2>
                 <p class="hint">
                     Where each CoinMarketCap portfolio is held, so the Earn column can show where a coin earns
-                    now and how much more it could. Guessed from the name until you pick. Uncheck “In totals”
-                    for portfolios that aren’t investments, e.g. savings.
+                    now and how much more it could. Guessed from the name until you pick. Uncheck “Counted”
+                    for portfolios that aren’t investments, e.g. savings: they’re left out of the totals, the income
+                    estimate and Telegram alerts.
                 </p>
                 {knownPortfolios.length > 0 ? (
                     <div class="portfolios">
                         <span class="portfolios__head">Portfolio</span>
                         <span class="portfolios__head">Held on</span>
-                        <span class="portfolios__head">In totals</span>
+                        <span class="portfolios__head">Counted</span>
                         {knownPortfolios.map((name) => [
                             <span key={`${name}-name`} class="portfolios__name">{name}</span>,
                             <select
@@ -175,7 +176,7 @@ export function App() {
                             <input
                                 key={`${name}-totals`}
                                 type="checkbox"
-                                aria-label={`Count ${name} in totals`}
+                                aria-label={`Count ${name} in totals, income and alerts`}
                                 checked={!isExcluded(name)}
                                 onChange={(e) => onTogglePortfolio(name, e.currentTarget.checked)}
                             />

@@ -1,5 +1,7 @@
 import { EXCHANGES, type Rate } from './exchanges';
-import { currentApr, exchangeResolver, type ExchangeResolver } from './holdings';
+import {
+    currentApr, exchangeResolver, formatCoins, withoutExcluded, type ExchangeResolver
+} from './holdings';
 import { getPortfolioSymbols } from './portfolio';
 import { loadRates, type ExchangeRates } from './rates';
 import {
@@ -11,6 +13,8 @@ interface Alert {
     symbol: string;
     best: BestRate;
     previous: BestRate;
+    /** Where the user holds the coin now: exchange names, or portfolio names for wallets. */
+    heldOn: string[];
     /** Where the user holds the coin and what moving it to the best rate would add. */
     positions: string[];
 }
@@ -41,25 +45,32 @@ const usd = (value: number) => new Intl.NumberFormat('en-US', {
  * noticeably more. "Now" assumes the best rate of the exchange the coin sits on (0% in wallets).
  */
 function describePositions(
-    holdings: { portfolio: string; value: number }[],
+    symbol: string,
+    holdings: { portfolio: string; value: number; balance?: number }[],
     best: BestRate,
     list: ExchangeRates[],
     resolve: ExchangeResolver
 ): string[] {
-    return holdings.flatMap(({ portfolio, value }) => {
+    const ticker = escapeHtml(symbol.toUpperCase());
+
+    return holdings.flatMap(({ portfolio, value, balance }) => {
         const exchange = resolve(portfolio);
         const now = currentApr(exchange, list);
-        const extra = (value * (best.apr - now)) / 100;
 
-        if (extra < 0.5) {
+        // Noticeable only: worth at least ~$0.50 a year.
+        if ((value * (best.apr - now)) / 100 < 0.5) {
             return [];
         }
 
+        // Coins per year when the amount is known (older data has only the USD value).
+        const perYear = (apr: number) => (balance === undefined
+            ? `${usd((value * apr) / 100)}/yr`
+            : `${formatCoins((balance * apr) / 100)} ${ticker}/yr`);
         const place = escapeHtml(exchange?.name ?? portfolio);
-        const income = usd((value * now) / 100);
+
         return [
-            `💼 ${place}: ~${now.toFixed(2)}% = ${income}/yr`
-                + ` → <b>+${usd(extra)}/yr</b> on ${escapeHtml(best.exchangeName)}`
+            `💼 ${place}: ~${now.toFixed(2)}% = ${perYear(now)}`
+                + ` → <b>+${perYear(best.apr - now)}</b> on ${escapeHtml(best.exchangeName)}`
         ];
     });
 }
@@ -68,17 +79,51 @@ function describePositions(
  * 🪙 BERA
  * 🔥 7.37% · Binance · flexible
  * ↗️ +2.19 pp (was 5.18% · Binance · flexible)
+ * 📍 Now on: Bybit, Telegram
  * 💼 Bybit: ~0.10% = $0.30/yr → +$22/yr on Binance
  */
-const formatAlerts = (alerts: Alert[]) => [
-    `📈 <b>New best ${alerts.length === 1 ? 'rate' : 'rates'}</b>`,
-    ...alerts.map(({ symbol, best, previous, positions }) => [
-        `🪙 <b>${escapeHtml(symbol.toUpperCase())}</b>`,
-        `🔥 <b>${describe(best)}</b>`,
-        `↗️ +${(best.apr - previous.apr).toFixed(2)} pp <i>(was ${describe(previous)})</i>`,
-        ...positions
-    ].join('\n'))
-].join('\n\n');
+const formatAlert = ({ symbol, best, previous, heldOn, positions }: Alert) => [
+    `🪙 <b>${escapeHtml(symbol.toUpperCase())}</b>`,
+    `🔥 <b>${describe(best)}</b>`,
+    `↗️ +${(best.apr - previous.apr).toFixed(2)} pp <i>(was ${describe(previous)})</i>`,
+    ...(heldOn.length > 0 ? [`📍 Now on: ${heldOn.map(escapeHtml).join(', ')}`] : []),
+    ...positions
+].join('\n');
+
+/** Telegram allows 4096 characters per message; keep a margin for the header. */
+const MAX_MESSAGE_LENGTH = 3800;
+
+/** Splits alerts into messages that fit Telegram's limit, at coin boundaries. */
+function packAlerts(alerts: Alert[]): Alert[][] {
+    const packs: Alert[][] = [];
+    let current: Alert[] = [];
+    let length = 0;
+
+    alerts.forEach((alert) => {
+        const size = formatAlert(alert).length + 2;
+
+        if (current.length > 0 && length + size > MAX_MESSAGE_LENGTH) {
+            packs.push(current);
+            current = [];
+            length = 0;
+        }
+
+        current.push(alert);
+        length += size;
+    });
+
+    if (current.length > 0) {
+        packs.push(current);
+    }
+
+    return packs;
+}
+
+function formatPack(pack: Alert[], index: number, total: number) {
+    const title = `New best ${pack.length === 1 && total === 1 ? 'rate' : 'rates'}`;
+    const part = total > 1 ? ` (${index + 1}/${total})` : '';
+    return [`📈 <b>${title}</b>${part}`, ...pack.map(formatAlert)].join('\n\n');
+}
 
 async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
     const settings = await getSettings();
@@ -132,8 +177,16 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
 
         // New coins only get a baseline; alerts are for increases.
         if (best && previousBest && best.apr >= previousBest.apr + settings.minIncrease) {
-            const positions = describePositions(holdings[symbol] ?? [], best, byCoin.get(symbol) ?? [], resolve);
-            alerts.push({ symbol, best, previous: previousBest, positions });
+            const list = byCoin.get(symbol) ?? [];
+            const places = withoutExcluded(holdings[symbol] ?? [], settings.excludedPortfolios);
+            const exchanges = places.map(({ portfolio }) => resolve(portfolio));
+
+            // The coin already sits where the best rate is: nothing to do, no alert (the baseline still moves up).
+            if (!exchanges.some((exchange) => exchange?.id === best.exchangeId)) {
+                const heldOn = [...new Set(places.map(({ portfolio }, i) => exchanges[i]?.name ?? portfolio))];
+                const positions = describePositions(symbol, places, best, list, resolve);
+                alerts.push({ symbol, best, previous: previousBest, heldOn, positions });
+            }
         }
 
         if (best) {
@@ -144,16 +197,19 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
     let message = `Coins: ${symbols.length}, alerts: ${alerts.length}`;
     let ok = true;
 
-    if (alerts.length > 0) {
+    const packs = packAlerts(alerts);
+
+    for (let i = 0; i < packs.length; i++) {
         try {
-            await sendMessage(settings.botToken, settings.chatId, formatAlerts(alerts));
+            await sendMessage(settings.botToken, settings.chatId, formatPack(packs[i], i, packs.length));
         } catch (error) {
-            // Keep the old baselines so these alerts are retried on the next check.
-            alerts.forEach(({ symbol }) => {
+            // Keep the old baselines for the alerts not sent yet, so they're retried on the next check.
+            packs.slice(i).flat().forEach(({ symbol }) => {
                 next[symbol] = previous[symbol];
             });
             ok = false;
             message = `Failed to send to Telegram: ${(error as Error).message}`;
+            break;
         }
     }
 

@@ -37,5 +37,5 @@ export const HOLDINGS_MESSAGE = 'cmc-helper:holdings';
 export interface HoldingsMessage {
     type: typeof HOLDINGS_MESSAGE;
     /** Lower-case symbol -> positions (portfolio name, USD value). */
-    holdings: Record<string, { portfolio: string; value: number }[]>;
+    holdings: Record<string, { portfolio: string; value: number; balance?: number }[]>;
 }

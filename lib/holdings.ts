@@ -20,6 +20,12 @@ export type PortfolioExchanges = Record<string, string>;
 /** Settings value for a portfolio that isn't on a supported exchange (wallet, other exchange, savings…). */
 export const NOT_AN_EXCHANGE = 'none';
 
+/** Drops positions in portfolios the user unchecked in the settings (not counted in totals, income or alerts). */
+export function withoutExcluded<T extends { portfolio: string }>(holdings: T[], excluded: string[] = []): T[] {
+    const names = new Set(excluded.map((name) => name.trim().toLowerCase()));
+    return holdings.filter(({ portfolio }) => !names.has(portfolio.trim().toLowerCase()));
+}
+
 const normalize = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 /** Best guess from the portfolio name ("WhiteBit", "Binance Earn" …); null for wallets and anything else. */
@@ -83,16 +89,35 @@ export interface Income {
     now: number;
     /** USD per year if everything earned the best rate. */
     best: number;
+    /** The same in coins per year; null when the coin amounts aren't known. */
+    nowCoins: number | null;
+    bestCoins: number | null;
     bestRate: IncomeRate | null;
 }
 
 export function estimateIncome(holdings: Holding[], list: ExchangeRates[], resolve: ExchangeResolver): Income {
     const bestRate = bestIncomeRate(list);
+    const aprs = holdings.map((holding) => currentApr(resolve(holding.portfolio), list));
     const value = holdings.reduce((sum, holding) => sum + holding.value, 0);
-    const now = holdings.reduce(
-        (sum, holding) => sum + (holding.value * currentApr(resolve(holding.portfolio), list)) / 100,
-        0
-    );
+    const now = holdings.reduce((sum, holding, i) => sum + (holding.value * aprs[i]) / 100, 0);
 
-    return { value, now, best: bestRate ? Math.max(now, (value * bestRate.apr) / 100) : now, bestRate };
+    const knownAmounts = holdings.every((holding) => holding.balance !== undefined);
+    const amount = holdings.reduce((sum, holding) => sum + (holding.balance ?? 0), 0);
+    const nowCoins = knownAmounts
+        ? holdings.reduce((sum, holding, i) => sum + ((holding.balance ?? 0) * aprs[i]) / 100, 0)
+        : null;
+    const bestCoins = knownAmounts && nowCoins !== null
+        ? Math.max(nowCoins, bestRate ? (amount * bestRate.apr) / 100 : 0)
+        : null;
+
+    const best = bestRate ? Math.max(now, (value * bestRate.apr) / 100) : now;
+
+    return { value, now, best, nowCoins, bestCoins, bestRate };
+}
+
+/** Coin amounts for income lines: "1,234", "12.35", "0.0421". */
+export function formatCoins(amount: number): string {
+    if (amount >= 100) return Math.round(amount).toLocaleString('en-US');
+    if (amount >= 1) return amount.toFixed(2);
+    return amount === 0 ? '0' : amount.toPrecision(3);
 }

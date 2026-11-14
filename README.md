@@ -21,12 +21,13 @@ It can also watch those rates in the background and message you in **Telegram** 
 - 📊 **Portfolio totals** — a banner at the top of the portfolio page with net invested, current value and all-time
   profit/loss across all your portfolios, on every portfolio page. Net invested = value − profit/loss, so money
   moved between coins through swaps isn't counted twice (unlike CoinMarketCap's cost basis). Portfolios that
-  aren't investments (e.g. savings) can be unchecked in the settings. Amounts stay hidden
+  aren't investments (e.g. savings) can be unchecked in the settings; they're then left out of the income estimate
+  and Telegram alerts too. Amounts stay hidden
   when you hide balances in CoinMarketCap.
 - 💼 **Where your coins sit** — the Earn column marks the exchange (or wallet) each coin is held on and estimates
   your yearly income now vs. at the best rate (`≈ $12/yr → $141/yr`). Each CoinMarketCap portfolio is mapped to an
   exchange in the settings (guessed from its name until you pick).
-- ✏️ **Set amount** — hover a coin's Holdings (or Balance on the overview), press ✎ and type the whole number of
+- ✏️ **Set amount** — press the small + next to a coin's Holdings (or Balance on the overview) and type the whole number of
   coins you have now; the extension adds a buy or sell for the difference at the current price (after you confirm).
   On the overview, coins held in several portfolios let you pick which one to change. Tick 🎁 Free for staking rewards or
   airdrops: the buy is recorded at $0, so invested doesn't grow.
