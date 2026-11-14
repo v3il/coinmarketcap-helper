@@ -1,4 +1,4 @@
-import { EXCHANGES, type Rate } from './exchanges';
+import { effectiveApr, EXCHANGES, type Rate } from './exchanges';
 import {
     currentApr, exchangeResolver, formatCoins, isRealisticRate, isShortTerm, withoutExcluded, type ExchangeResolver
 } from './holdings';
@@ -8,6 +8,7 @@ import {
     getSettings, holdingsItem, knownPromosItem, knownRatesItem, lastCheckItem,
     type BestRate, type CheckStatus, type CoinSnapshot
 } from './storage';
+import { refreshBingx } from './bingxRefresh';
 import { escapeHtml, sendMessage } from './telegram';
 
 /** A short fixed-term offer (promo) worth a look: announced once, again only if its APR goes up. */
@@ -69,7 +70,7 @@ function describePositions(
 
     return holdings.flatMap(({ portfolio, value, balance }) => {
         const exchange = resolve(portfolio);
-        const now = currentApr(exchange, list);
+        const now = currentApr(exchange, list, balance);
 
         // Noticeable only: worth at least ~$0.50 a year.
         if ((value * (best.apr - now)) / 100 < 0.5) {
@@ -176,6 +177,11 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
         return { ok: false, message, failedExchanges: [] };
     }
 
+    // BingX has no API: its rates come from its Earn page, loaded in a background tab if the user allowed it.
+    if (settings.bingxAutoRefresh) {
+        await refreshBingx();
+    }
+
     const { byCoin, failed } = await loadRates(EXCHANGES);
     const failedExchanges = failed.map((exchange) => exchange.name);
 
@@ -195,10 +201,16 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
     symbols.forEach((symbol) => {
         const old = previous[symbol] ?? {};
         const snapshot: CoinSnapshot = {};
+        const places = withoutExcluded(holdings[symbol] ?? [], settings.excludedPortfolios);
+        const balance = places.length > 0 && places.every((place) => place.balance !== undefined)
+            ? places.reduce((sum, place) => sum + (place.balance ?? 0), 0)
+            : null;
 
         (byCoin.get(symbol) ?? []).forEach(({ exchange, rates }) => {
             // Short promos (MEXC 2 days at 600%) aren't rates you can keep coins at: they get their own alerts.
+            // Tiered rates (BingX) count at what the user's amount would actually earn.
             const best = rates.filter(isRealisticRate)
+                .map(({ tiers, ...rate }) => ({ ...rate, apr: effectiveApr({ ...rate, tiers }, balance) }))
                 .reduce<Rate | null>((acc, rate) => (isBetter(rate, acc) ? rate : acc), null);
 
             if (best) {
@@ -213,11 +225,6 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
                 snapshot[id] = old[id];
             }
         });
-
-        const places = withoutExcluded(holdings[symbol] ?? [], settings.excludedPortfolios);
-        const balance = places.length > 0 && places.every((place) => place.balance !== undefined)
-            ? places.reduce((sum, place) => sum + (place.balance ?? 0), 0)
-            : null;
 
         const offers = (byCoin.get(symbol) ?? [])
             .flatMap(({ exchange, rates }) => rates.filter(isShortTerm).map((rate) => ({ exchange, ...rate })));

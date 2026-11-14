@@ -190,7 +190,14 @@ function createIncome(symbol: string, holdings: Holding[], exchangeRates: Exchan
     );
 }
 
-function createTip({ apr, days, unbondingDays }: Rate, bestFixed: number) {
+/** "8.00% up to 300, 3.20% from 300 to 10,000,000" */
+const describeTiers = (tiers: NonNullable<Rate['tiers']>) => tiers
+    .map(({ from, to, apr }, i) => (i === 0
+        ? `${apr.toFixed(2)}% up to ${to.toLocaleString('en-US')}`
+        : `${apr.toFixed(2)}% from ${from.toLocaleString('en-US')} to ${to.toLocaleString('en-US')}`))
+    .join(', ');
+
+function createTip({ apr, days, unbondingDays, tiers }: Rate, bestFixed: number) {
     const flexible = days === 0;
     const classes = ['cmc-helper-earn__tip'];
 
@@ -200,7 +207,11 @@ function createTip({ apr, days, unbondingDays }: Rate, bestFixed: number) {
         classes.push('cmc-helper-earn__tip--best-fixed');
     }
 
-    const title = unbondingDays ? `No lock-up; withdrawal takes ${unbondingDays} days after unstaking` : '';
+    const notes = [
+        unbondingDays ? `No lock-up; withdrawal takes ${unbondingDays} days after unstaking` : '',
+        tiers ? `Depends on the amount: ${describeTiers(tiers)}` : ''
+    ];
+    const title = notes.filter(Boolean).join('\n');
 
     return h(
         'span',

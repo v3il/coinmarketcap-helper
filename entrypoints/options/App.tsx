@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'preact/hooks';
 import { EXCHANGES } from '@/lib/exchanges';
 import { guessExchange, NOT_AN_EXCHANGE } from '@/lib/holdings';
-import { CHECK_NOW_MESSAGE } from '@/lib/messages';
+import { BINGX_EARN_URL } from '@/lib/exchanges/bingx';
+import { BINGX_REFRESH_MESSAGE, CHECK_NOW_MESSAGE } from '@/lib/messages';
 import { getPortfolioSymbols } from '@/lib/portfolio';
 import {
+    bingxRatesItem,
     DEFAULT_SETTINGS,
     getSettings,
     knownPortfoliosItem,
     lastCheckItem,
     portfolioItem,
     settingsItem,
+    type BingxRates,
     type CheckStatus,
     type Settings
 } from '@/lib/storage';
@@ -26,6 +29,8 @@ export function App() {
     const [symbols, setSymbols] = useState<string[]>([]);
     const [knownPortfolios, setKnownPortfolios] = useState<string[]>([]);
     const [notice, setNotice] = useState<Notice>(null);
+    const [bingxRates, setBingxRates] = useState<BingxRates | null>(null);
+    const [bingxNotice, setBingxNotice] = useState<Notice>(null);
     const [busy, setBusy] = useState(false);
 
     useEffect(() => {
@@ -34,17 +39,20 @@ export function App() {
             setSaved(value);
         });
         lastCheckItem.getValue().then(setLastCheck);
+        bingxRatesItem.getValue().then(setBingxRates);
         getPortfolioSymbols().then(setSymbols);
         knownPortfoliosItem.getValue().then(setKnownPortfolios);
 
         const unwatchCheck = lastCheckItem.watch(setLastCheck);
         const unwatchPortfolio = portfolioItem.watch(() => getPortfolioSymbols().then(setSymbols));
         const unwatchKnown = knownPortfoliosItem.watch(setKnownPortfolios);
+        const unwatchBingx = bingxRatesItem.watch(setBingxRates);
 
         return () => {
             unwatchCheck();
             unwatchPortfolio();
             unwatchKnown();
+            unwatchBingx();
         };
     }, []);
 
@@ -73,6 +81,7 @@ export function App() {
             minIncrease: Math.max(0.1, form.minIncrease || DEFAULT_SETTINGS.minIncrease),
             intervalHours: Math.min(24, Math.max(1, Math.round(form.intervalHours || DEFAULT_SETTINGS.intervalHours))),
             promoAlerts: form.promoAlerts,
+            bingxAutoRefresh: form.bingxAutoRefresh,
             minPromoApr: Number.isFinite(form.minPromoApr)
                 ? Math.max(0, form.minPromoApr)
                 : DEFAULT_SETTINGS.minPromoApr,
@@ -118,6 +127,23 @@ export function App() {
         await settingsItem.setValue({ ...current, portfolioExchanges });
         setForm((value) => ({ ...value, portfolioExchanges }));
         setSaved((value) => ({ ...value, portfolioExchanges }));
+    };
+
+    // Saves right away, like the portfolio checkboxes.
+    const onToggleBingx = async (bingxAutoRefresh: boolean) => {
+        const current = await getSettings();
+
+        await settingsItem.setValue({ ...current, bingxAutoRefresh });
+        setForm((value) => ({ ...value, bingxAutoRefresh }));
+        setSaved((value) => ({ ...value, bingxAutoRefresh }));
+    };
+
+    const onRefreshBingx = async () => {
+        setBingxNotice({ kind: 'ok', text: 'Loading BingX in a background tab…' });
+        const ok: boolean = await chrome.runtime.sendMessage({ type: BINGX_REFRESH_MESSAGE });
+        setBingxNotice(ok
+            ? { kind: 'ok', text: 'Rates updated' }
+            : { kind: 'error', text: 'BingX didn’t load the rates. Open the Earn page yourself and try again.' });
     };
 
     const onFindChat = () => run(async () => {
@@ -189,6 +215,35 @@ export function App() {
                 ) : (
                     <p class="hint">Open your portfolio on CoinMarketCap — the list is picked up from there.</p>
                 )}
+            </section>
+
+            <section>
+                <h2>BingX</h2>
+                <p class="hint">
+                    BingX has no public API for Earn rates. The extension reads them when its
+                    {' '}
+                    <a href={BINGX_EARN_URL} target="_blank" rel="noreferrer">Earn page</a>
+                    {' '}
+                    is open: when you visit it, or automatically before each check (the page opens in a background
+                    tab for a few seconds and closes; focus stays where it is). New-user and VIP offers are skipped.
+                </p>
+                <p>
+                    {bingxRates
+                        ? `Rates from ${formatTime(bingxRates.at)} (${Object.keys(bingxRates.rates).length} coins)`
+                        : 'No rates yet.'}
+                </p>
+                <div class="row">
+                    <label class="checkbox">
+                        <input
+                            type="checkbox"
+                            checked={form.bingxAutoRefresh}
+                            onChange={(e) => onToggleBingx(e.currentTarget.checked)}
+                        />
+                        <span>Refresh automatically before each check</span>
+                    </label>
+                    <button type="button" onClick={onRefreshBingx}>Refresh now</button>
+                </div>
+                {bingxNotice && <p class={`notice notice--${bingxNotice.kind}`}>{bingxNotice.text}</p>}
             </section>
 
             <section>

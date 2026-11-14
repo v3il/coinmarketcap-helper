@@ -1,4 +1,5 @@
 import { storage } from 'wxt/utils/storage';
+import type { Rate } from './exchanges/common';
 
 // Everything lives in storage.local: it stays on this machine and is readable only by the extension.
 
@@ -11,6 +12,8 @@ export interface Settings {
     /** Also notify about short promos (fixed terms of 14 days or less) from this APR, %. */
     promoAlerts: boolean;
     minPromoApr: number;
+    /** Refresh BingX rates before each check by opening its Earn page in a background tab for a few seconds. */
+    bingxAutoRefresh: boolean;
     /** CMC portfolio names left out of the totals banner (e.g. savings), matched case-insensitively. */
     excludedPortfolios: string[];
     /** CMC portfolio name -> exchange id or 'none' (wallet / other). Unset portfolios are guessed by name. */
@@ -24,6 +27,7 @@ export const DEFAULT_SETTINGS: Settings = {
     intervalHours: 4,
     promoAlerts: true,
     minPromoApr: 50,
+    bingxAutoRefresh: false,
     excludedPortfolios: [],
     portfolioExchanges: {}
 };
@@ -75,5 +79,17 @@ export const holdingsItem = storage.defineItem<Record<string, StoredHolding[]>>(
 
 /** "symbol|exchangeId|days" -> APR of the short promos already announced; a promo that ends is dropped. */
 export const knownPromosItem = storage.defineItem<Record<string, number>>('local:knownPromos', { fallback: {} });
+
+/**
+ * BingX rates as last read from its Earn page (it has no public API: the page signs its own requests,
+ * the extension only reads the response). Lower-case symbol -> rates.
+ */
+export interface BingxRates {
+    at: number;
+    rates: Record<string, Rate[]>;
+}
+
+/** Also read directly as chrome.storage.local 'bingxRates' in lib/exchanges/bingx.ts. */
+export const bingxRatesItem = storage.defineItem<BingxRates | null>('local:bingxRates', { fallback: null });
 
 export const lastCheckItem = storage.defineItem<CheckStatus | null>('local:lastCheck', { fallback: null });

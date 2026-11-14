@@ -1,4 +1,4 @@
-import { EXCHANGES, type Exchange } from './exchanges';
+import { effectiveApr, EXCHANGES, type Exchange } from './exchanges';
 import type { ExchangeRates } from './rates';
 
 /** A coin's position in one CMC portfolio. */
@@ -66,13 +66,18 @@ export interface IncomeRate {
     exchange: Exchange;
 }
 
-/** The best realistic rate for a coin: flexible, or fixed for longer than two weeks. */
-export function bestIncomeRate(list: ExchangeRates[] = []): IncomeRate | null {
+/**
+ * The best realistic rate for a coin: flexible, or fixed for longer than two weeks. With `amount`, tiered rates
+ * count at what that amount actually earns (BingX: 8% only up to 300 USDT).
+ */
+export function bestIncomeRate(list: ExchangeRates[] | undefined, amount?: number | null): IncomeRate | null {
     let best: IncomeRate | null = null;
 
-    list.forEach(({ exchange, rates }) => rates.forEach(({ apr, days }) => {
-        if (isRealisticRate({ days }) && (!best || apr > best.apr)) {
-            best = { apr, days, exchange };
+    (list ?? []).forEach(({ exchange, rates }) => rates.forEach((rate) => {
+        const apr = effectiveApr(rate, amount);
+
+        if (isRealisticRate(rate) && (!best || apr > best.apr)) {
+            best = { apr, days: rate.days, exchange };
         }
     }));
 
@@ -84,9 +89,9 @@ export function bestIncomeRate(list: ExchangeRates[] = []): IncomeRate | null {
  * the best rate their exchange offers, e.g. WhiteBIT 30d when there's no flexible plan).
  * Wallets, unknown places and exchanges without an earn product for the coin count as 0%.
  */
-export function currentApr(exchange: Exchange | null, list: ExchangeRates[] = []): number {
-    const own = exchange ? list.filter((item) => item.exchange.id === exchange.id) : [];
-    return bestIncomeRate(own)?.apr ?? 0;
+export function currentApr(exchange: Exchange | null, list: ExchangeRates[] | undefined, amount?: number | null) {
+    const own = exchange && list ? list.filter((item) => item.exchange.id === exchange.id) : [];
+    return bestIncomeRate(own, amount)?.apr ?? 0;
 }
 
 export interface Income {
@@ -102,13 +107,14 @@ export interface Income {
 }
 
 export function estimateIncome(holdings: Holding[], list: ExchangeRates[], resolve: ExchangeResolver): Income {
-    const bestRate = bestIncomeRate(list);
-    const aprs = holdings.map((holding) => currentApr(resolve(holding.portfolio), list));
-    const value = holdings.reduce((sum, holding) => sum + holding.value, 0);
-    const now = holdings.reduce((sum, holding, i) => sum + (holding.value * aprs[i]) / 100, 0);
-
     const knownAmounts = holdings.every((holding) => holding.balance !== undefined);
     const amount = holdings.reduce((sum, holding) => sum + (holding.balance ?? 0), 0);
+
+    // Tiered rates: each position earns what its own amount gets; "best" is for everything moved to one place.
+    const bestRate = bestIncomeRate(list, knownAmounts ? amount : null);
+    const aprs = holdings.map((holding) => currentApr(resolve(holding.portfolio), list, holding.balance));
+    const value = holdings.reduce((sum, holding) => sum + holding.value, 0);
+    const now = holdings.reduce((sum, holding, i) => sum + (holding.value * aprs[i]) / 100, 0);
     const nowCoins = knownAmounts
         ? holdings.reduce((sum, holding, i) => sum + ((holding.balance ?? 0) * aprs[i]) / 100, 0)
         : null;

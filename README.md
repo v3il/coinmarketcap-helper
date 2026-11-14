@@ -12,7 +12,7 @@ It can also watch those rates in the background and message you in **Telegram** 
 ---
 
 ## ✨ Key Features
-- 💰 **Multi-exchange support** — **Binance**, **Bybit**, **OKX**, **MEXC** and **WhiteBIT**, plus native
+- 💰 **Multi-exchange support** — **Binance**, **Bybit**, **OKX**, **MEXC**, **WhiteBIT** and **BingX**, plus native
   staking in the **Ready** wallet (STRK and BTC tokens on Starknet).
 - ⏳ **Flexible and fixed-term rates** — each rate is shown with its term: `∞` for flexible (redeem any time),
   `7d`, `30d`… for fixed-term products (up to 60 days on Binance and WhiteBIT).
@@ -53,6 +53,19 @@ It can also watch those rates in the background and message you in **Telegram** 
 5. Click **"Load unpacked"**, then select the directory where you extracted the extension.
 
 To update, unzip the new release over the old directory and press the reload button on the extension's card.
+
+---
+
+## 🟦 BingX
+
+BingX has no public API for Earn rates, and its website signs every request. So the extension doesn't call it:
+it reads the product list the [Earn page](https://bingx.com/en/wealth/earn) loads itself, whenever that page is open.
+
+- Open the Earn page now and then, or tick **Refresh automatically** in the settings: before each check the page
+  opens in a background tab for a few seconds and closes (focus stays where it is).
+- Rates older than 3 days aren't used. New-user and VIP offers are skipped.
+- Some BingX rates depend on the amount (e.g. 8% only up to 300 USDT, less above). The income estimate and
+  alerts use what your amount would actually earn; hover a rate to see the tiers.
 
 ---
 

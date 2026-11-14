@@ -31,6 +31,20 @@ export interface PortfolioNamesMessage {
     names: string[];
 }
 
+/** BingX page script → worker: the Earn product list the page itself loaded (raw API data). */
+export const BINGX_PRODUCTS_MESSAGE = 'cmc-helper:bingx-products';
+
+export interface BingxProductsMessage {
+    type: typeof BINGX_PRODUCTS_MESSAGE;
+    result: unknown;
+}
+
+/** Settings page → worker: refresh BingX rates now (opens its Earn page in a background tab). */
+export const BINGX_REFRESH_MESSAGE = 'cmc-helper:bingx-refresh';
+
+/** Content script (CMC) → worker: the BingX rates saved last time, if any. */
+export const BINGX_RATES_MESSAGE = 'cmc-helper:bingx-rates';
+
 /** Content script → worker: where each portfolio coin is held, for personal Telegram alerts. */
 export const HOLDINGS_MESSAGE = 'cmc-helper:holdings';
 
