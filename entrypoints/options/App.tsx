@@ -80,6 +80,9 @@ export function App() {
             chatId: form.chatId.trim(),
             minIncrease: Math.max(0.1, form.minIncrease || DEFAULT_SETTINGS.minIncrease),
             intervalHours: Math.min(24, Math.max(1, Math.round(form.intervalHours || DEFAULT_SETTINGS.intervalHours))),
+            minPositionUsd: Number.isFinite(form.minPositionUsd)
+                ? Math.max(0, form.minPositionUsd)
+                : DEFAULT_SETTINGS.minPositionUsd,
             promoAlerts: form.promoAlerts,
             bingxAutoRefresh: form.bingxAutoRefresh,
             minPromoApr: Number.isFinite(form.minPromoApr)
@@ -308,6 +311,20 @@ export function App() {
                             />
                         </label>
                     </div>
+
+                    <label>
+                        <span>Skip coins worth less than, $</span>
+                        <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={form.minPositionUsd}
+                            onInput={(e) => update('minPositionUsd', e.currentTarget.valueAsNumber)}
+                        />
+                        <small>
+                            No alerts for coins you keep just to watch the price (counted portfolios only). 0 = all.
+                        </small>
+                    </label>
 
                     <div class="row">
                         <label class="checkbox">

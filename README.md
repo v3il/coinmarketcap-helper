@@ -82,7 +82,8 @@ messages you about:
   for the term (5 days at 500% ≈ +6.8%). Each promo is announced once, again only if its rate goes up. Mind the
   per-user caps such promos usually have.
 
-Portfolios unchecked in the settings are left out. Many alerts at once are split into several messages; whatever
+Coins worth less than $10 in your portfolio (configurable) get no alerts, so a coin or two kept just to watch
+the price stays quiet. Portfolios unchecked in the settings are left out. Many alerts at once are split into several messages; whatever
 couldn't be sent is retried on the next check.
 
 

@@ -9,6 +9,8 @@ export interface Settings {
     /** Notify when a coin's best APR grows by at least this many percentage points. */
     minIncrease: number;
     intervalHours: number;
+    /** No alerts for coins worth less than this in the counted portfolios, USD (coins kept just to watch). */
+    minPositionUsd: number;
     /** Also notify about short promos (fixed terms of 14 days or less) from this APR, %. */
     promoAlerts: boolean;
     minPromoApr: number;
@@ -25,6 +27,7 @@ export const DEFAULT_SETTINGS: Settings = {
     chatId: '',
     minIncrease: 1,
     intervalHours: 4,
+    minPositionUsd: 10,
     promoAlerts: true,
     minPromoApr: 50,
     bingxAutoRefresh: false,

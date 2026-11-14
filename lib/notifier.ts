@@ -226,6 +226,11 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
             }
         });
 
+        // Coins kept just to watch the price (a coin or two): baselines move on, but no alerts. Coins whose
+        // positions aren't known yet (holdings not reported) still get them.
+        const tooSmall = symbol in holdings
+            && places.reduce((sum, place) => sum + place.value, 0) < settings.minPositionUsd;
+
         const offers = (byCoin.get(symbol) ?? [])
             .flatMap(({ exchange, rates }) => rates.filter(isShortTerm).map((rate) => ({ exchange, ...rate })));
 
@@ -234,7 +239,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
             const known = previousPromos[key];
             nextPromos[key] = apr;
 
-            if (settings.promoAlerts && apr >= settings.minPromoApr
+            if (!tooSmall && settings.promoAlerts && apr >= settings.minPromoApr
                 && (known === undefined || apr >= known + settings.minIncrease)) {
                 const heldOn = placesOf(places, resolve);
                 promos.push({ key, symbol, exchangeName: exchange.name, apr, days, heldOn, balance });
@@ -252,7 +257,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
         const previousBest = bestOf(old);
 
         // New coins only get a baseline; alerts are for increases.
-        if (best && previousBest && best.apr >= previousBest.apr + settings.minIncrease) {
+        if (!tooSmall && best && previousBest && best.apr >= previousBest.apr + settings.minIncrease) {
             const list = byCoin.get(symbol) ?? [];
 
             // The coin already sits where the best rate is: nothing to do, no alert (the baseline still moves up).
