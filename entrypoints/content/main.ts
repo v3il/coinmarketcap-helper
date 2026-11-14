@@ -131,12 +131,12 @@ export function main() {
         });
     };
 
-    // A transaction was added: reload CMC's current view (re-select the current sidebar item) and our own data.
+    // A transaction was added: make CMC reload its current view, and reload our own data.
     function refreshAfterTransaction() {
         invalidateHoldings();
         invalidateTotals();
 
-        // The selected sidebar item (a portfolio or the overview) is the one styled differently from its siblings.
+        // The selected sidebar item (a portfolio) is the one styled differently from its siblings; none = overview.
         const items = [...document.querySelectorAll<HTMLElement>('[data-rbd-draggable-id]')];
         const counts = new Map<string, number>();
         items.forEach((item) => counts.set(item.className, (counts.get(item.className) ?? 0) + 1));
@@ -145,10 +145,16 @@ export function main() {
             el.childElementCount === 0 && el.textContent?.trim() === 'Overview'
             && !el.closest('header, nav, [data-test^="global-header"]')
         ));
-        const target = selected?.querySelector<HTMLElement>('.name') ?? overview;
+        const current = selected?.querySelector<HTMLElement>('.name') ?? overview;
+        // CMC ignores a click on the item already selected: step to another one and right back, which refetches.
+        const other = selected ? overview : items[0]?.querySelector<HTMLElement>('.name');
 
-        if (target) {
-            target.click();
+        if (current && other) {
+            other.click();
+            setTimeout(() => {
+                current.click();
+                scheduleUpdate();
+            }, 50);
         } else {
             window.location.reload();
         }
