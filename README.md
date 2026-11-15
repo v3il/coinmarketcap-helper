@@ -78,8 +78,9 @@ While Chrome is running, the extension checks rates in the background (every 4 h
 messages you about:
 
 - 📈 **New best rate** — the best rate for a coin in your portfolio grew by at least 1 percentage point
-  (configurable). The message says where the coin is held now (`📍 Now on: Bybit, Keplr`) and how much more it would
-  earn a year at the best rate, in coins. No alert when the coin already sits on the exchange with the new best rate.
+  (configurable). The message says where the coin is held now, with the rate it gets on each exchange
+  (`📍 Now on: Bybit (0.10%), Keplr`), and how much more it would earn a year at the best rate, in coins.
+  No alert when the coin already sits on the exchange with the new best rate.
 - 🎁 **New promo** — a fixed term up to 14 days from 50% APR (both configurable, can be turned off), with the return
   for the term (5 days at 500% ≈ +6.8%). Each promo is announced once, again only if its rate goes up. Mind the
   per-user caps such promos usually have.

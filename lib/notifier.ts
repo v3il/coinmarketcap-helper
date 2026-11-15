@@ -92,7 +92,7 @@ function describePositions(
  * 🪙 BERA
  * 🔥 7.37% · Binance · flexible
  * ↗️ +2.19 pp (was 5.18% · Binance · flexible)
- * 📍 Now on: Bybit, Telegram
+ * 📍 Now on: Bybit (0.10%), Telegram
  * 💼 Bybit: ~0.10% = $0.30/yr → +$22/yr on Binance
  */
 const formatAlert = ({ symbol, best, previous, heldOn, positions }: Alert) => [
@@ -109,7 +109,7 @@ const MAX_MESSAGE_LENGTH = 3800;
 /**
  * 🪙 USDT · MEXC · 2 days at 600.00%
  * ≈ +3.29% for the term = +3.29 USDT on all your USDT, if the per-user cap allows
- * 📍 Now on: Binance
+ * 📍 Now on: Binance (1.20%)
  */
 function formatPromo({ symbol, exchangeName, apr, days, heldOn, balance }: Promo) {
     const ticker = escapeHtml(symbol.toUpperCase());
@@ -156,10 +156,31 @@ function formatPack(title: string, blocks: string[], index: number, total: numbe
     return [`<b>${title}</b>${part}`, ...blocks].join('\n\n');
 }
 
-/** Where the coin sits: exchange names, or portfolio names for wallets. */
-const placesOf = (places: { portfolio: string }[], resolve: ExchangeResolver) => (
-    [...new Set(places.map(({ portfolio }) => resolve(portfolio)?.name ?? portfolio))]
-);
+/**
+ * Where the coin sits, with the rate it gets there: "OKX (1.20%)", or the portfolio name for wallets
+ * (their staking isn't known). Positions on one exchange count together (tiered rates depend on the amount).
+ */
+function placesOf(
+    places: { portfolio: string; balance?: number }[],
+    resolve: ExchangeResolver,
+    list: ExchangeRates[] | undefined
+): string[] {
+    const byPlace = new Map<string, { exchange: ReturnType<ExchangeResolver>; balance: number | null }>();
+
+    places.forEach(({ portfolio, balance }) => {
+        const exchange = resolve(portfolio);
+        const name = exchange?.name ?? portfolio;
+        const known = byPlace.get(name);
+        const amount = balance ?? null;
+        const total = known?.balance === null || amount === null ? null : (known?.balance ?? 0) + amount;
+
+        byPlace.set(name, { exchange, balance: total });
+    });
+
+    return [...byPlace].map(([name, { exchange, balance }]) => (exchange
+        ? `${name} (${currentApr(exchange, list, balance).toFixed(2)}%)`
+        : name));
+}
 
 async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
     const settings = await getSettings();
@@ -242,7 +263,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
 
             if (!tooSmall && settings.promoAlerts && apr >= settings.minPromoApr
                 && (known === undefined || apr >= known + settings.minIncrease)) {
-                const heldOn = placesOf(places, resolve);
+                const heldOn = placesOf(places, resolve, byCoin.get(symbol));
                 promos.push({ key, symbol, exchangeName: exchange.name, apr, days, heldOn, balance });
             }
         });
@@ -263,7 +284,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
 
             // The coin already sits where the best rate is: nothing to do, no alert (the baseline still moves up).
             if (!places.some(({ portfolio }) => resolve(portfolio)?.id === best.exchangeId)) {
-                const heldOn = placesOf(places, resolve);
+                const heldOn = placesOf(places, resolve, list);
                 const positions = describePositions(symbol, places, best, list, resolve);
                 alerts.push({ symbol, best, previous: previousBest, heldOn, positions });
             }
