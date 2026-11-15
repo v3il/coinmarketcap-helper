@@ -12,25 +12,30 @@ It can also watch those rates in the background and message you in **Telegram** 
 ---
 
 ## ✨ Key Features
-- 💰 **Multi-exchange support** — **Binance**, **Bybit**, **OKX**, **MEXC** and **WhiteBIT**, plus native
+- 💰 **Multi-exchange support** — **Binance**, **Bybit**, **OKX**, **MEXC**, **WhiteBIT** and **BingX**, plus native
   staking in the **Ready** wallet (STRK and BTC tokens on Starknet).
 - ⏳ **Flexible and fixed-term rates** — each rate is shown with its term: `∞` for flexible (redeem any time),
   `7d`, `30d`… for fixed-term products (up to 60 days on Binance and WhiteBIT).
 - 🏆 **Best offer first** — exchanges are sorted by their best rate; the best flexible rate is highlighted in blue,
   the best fixed-term rate in green.
-- 📊 **Portfolio totals** — a banner at the top of the portfolio page with net invested, current value and all-time
-  profit/loss across all your portfolios, on every portfolio page. Net invested = value − profit/loss, so money
-  moved between coins through swaps isn't counted twice (unlike CoinMarketCap's cost basis). Portfolios that
-  aren't investments (e.g. savings) can be unchecked in the settings. Amounts stay hidden
-  when you hide balances in CoinMarketCap.
+- 📊 **Portfolio totals** — a banner at the top of every portfolio page with net invested, current value and
+  all-time profit/loss across all your portfolios. Net invested = value − profit/loss, so money moved between coins
+  through swaps isn't counted twice (unlike CoinMarketCap's cost basis). Amounts stay hidden when you hide balances
+  in CoinMarketCap.
 - 💼 **Where your coins sit** — the Earn column marks the exchange (or wallet) each coin is held on and estimates
-  your yearly income now vs. at the best rate (`≈ $12/yr → $141/yr`). Each CoinMarketCap portfolio is mapped to an
-  exchange in the settings (guessed from its name until you pick).
-- ✏️ **Set amount** — hover a coin's Holdings (or Balance on the overview), press ✎ and type the whole number of
-  coins you have now; the extension adds a buy or sell for the difference at the current price (after you confirm).
-  On the overview, coins held in several portfolios let you pick which one to change. Tick 🎁 Free for staking rewards or
-  airdrops: the buy is recorded at $0, so invested doesn't grow.
-- 🔔 **Telegram alerts** — get a message when the best rate for one of your coins goes up.
+  your yearly income in coins, now vs. at the best rate (`≈ 1.5 FET/yr → 9.8 FET/yr`). "Now" is the best rate of
+  the exchange the coin sits on; fixed terms up to 14 days (short promos) don't count as "best".
+- 🗂️ **Portfolio settings** — each CoinMarketCap portfolio is mapped to an exchange (guessed from its name until you
+  pick). Portfolios that aren't investments (e.g. savings) can be unchecked (**Counted**): they're left out of the
+  totals, the income estimate and Telegram alerts.
+- ✏️ **Set amount** — press the small **+** next to a coin's Holdings (or Balance on the overview) and type either
+  the new total or just the change (**±**: `+12`, `-5`), in whole coins. The extension adds a buy or sell for the
+  difference at the current price. On the overview, coins held in several portfolios let you pick which one to
+  change. Tick 🎁 **Free** for staking rewards or airdrops: the buy is recorded at $0, so invested doesn't grow.
+- 🔔 **Telegram alerts** — a message when the best rate for one of your coins goes up, or a short high-rate promo
+  shows up, plus a weekly summary of the best moves.
+- 🚀 **Fast** — rates are cached by the extension for 30 minutes, so the portfolio page doesn't wait for every
+  exchange each time; older rates show at once and refresh in the background.
 - ⚡ **No login, no API keys** — only public / website endpoints are used.
 - 🔒 **Private** — everything runs locally in your browser; nothing is sent anywhere except to the exchanges and,
   if you set it up, your own Telegram bot.
@@ -54,10 +59,38 @@ To update, unzip the new release over the old directory and press the reload but
 
 ---
 
+## 🟦 BingX
+
+BingX has no public API for Earn rates, and its website signs every request. So the extension doesn't call it:
+it reads the product list the [Earn page](https://bingx.com/en/wealth/earn) loads itself, whenever that page is open.
+
+- Open the Earn page now and then, or tick **Refresh automatically** in the settings: before each check the page
+  opens in a background tab for a few seconds and closes (focus stays where it is).
+- Rates older than 3 days aren't used. New-user and VIP offers are skipped.
+- Some BingX rates depend on the amount (e.g. 8% only up to 300 USDT, less above). The income estimate and
+  alerts use what your amount would actually earn; hover a rate to see the tiers.
+
+---
+
 ## 🔔 Telegram alerts
 
-While Chrome is running, the extension checks rates in the background (every 4 hours by default) and messages you
-when the best rate for a coin in your portfolio grows by at least 1 percentage point (configurable).
+While Chrome is running, the extension checks rates in the background (every 4 hours by default, configurable) and
+messages you about:
+
+- 📈 **New best rate** — the best rate for a coin in your portfolio grew by at least 1 percentage point
+  (configurable). The message says where the coin is held now (`📍 Now on: Bybit, Keplr`) and how much more it would
+  earn a year at the best rate, in coins. No alert when the coin already sits on the exchange with the new best rate.
+- 🎁 **New promo** — a fixed term up to 14 days from 50% APR (both configurable, can be turned off), with the return
+  for the term (5 days at 500% ≈ +6.8%). Each promo is announced once, again only if its rate goes up. Mind the
+  per-user caps such promos usually have.
+- 📊 **Weekly summary** — once a week (Monday by default, with the first check after 9:00; can be turned off): what
+  your coins earn a year now and at the best rates, how many already sit at the best rate, the top 5 moves by gain
+  (`SOL · Bybit 2.10% → OKX 7.00%`) and the promos running. **Send summary now** sends one right away.
+
+Coins worth less than $10 in your portfolio (configurable), or no longer held at all, get no alerts, so a coin or two kept just to watch
+the price stays quiet (the summary counts them in the totals, but suggests no moves for them). Portfolios unchecked
+in the settings are left out. Many alerts at once are split into several messages; whatever couldn't be sent is
+retried on the next check.
 
 1. Create a bot with [@BotFather](https://t.me/BotFather) and copy its token.
 2. Click the extension icon to open the settings and paste the token.
@@ -81,11 +114,14 @@ npm run lint && npm run compile
 ```
 
 - `lib/exchanges/` — one module per exchange. Each exports an `Exchange` (`id`, `name`, `logoUrl`, `loadRates()`)
-  whose `loadRates()` returns `Map<symbol, { apr, days }[]>` (`days: 0` = flexible). To add an exchange, create
+  whose `loadRates()` returns `Map<symbol, Rate[]>`: `{ apr, days }` (`days: 0` = flexible), optionally
+  `unbondingDays` (open-ended staking) and `tiers` (rate depends on the amount). To add an exchange, create
   a module, list it in `lib/exchanges/index.ts` and add its API host to `host_permissions` in `wxt.config.ts`.
-- `entrypoints/content/` — renders the Earn column on the CMC portfolio page.
-- `entrypoints/background.ts` — proxies requests for the content script and runs the scheduled Telegram checks
-  (`lib/notifier.ts`).
+- `entrypoints/content/` — renders the Earn column, totals banner and Set amount on the CMC portfolio page.
+- `entrypoints/bingx-*.content.ts` + `lib/bingxRefresh.ts` — read BingX rates from its Earn page (the page's own
+  request) and refresh them in a background tab.
+- `entrypoints/background.ts` — loads and caches rates for the CMC page (`lib/ratesCache.ts`), proxies requests
+  for the content script and runs the scheduled Telegram checks (`lib/notifier.ts`, `lib/digest.ts`).
 - `entrypoints/options/` — settings page (Preact).
 
 ### Releasing

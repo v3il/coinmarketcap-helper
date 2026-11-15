@@ -31,11 +31,31 @@ export interface PortfolioNamesMessage {
     names: string[];
 }
 
+/** BingX page script → worker: the Earn product list the page itself loaded (raw API data). */
+export const BINGX_PRODUCTS_MESSAGE = 'cmc-helper:bingx-products';
+
+export interface BingxProductsMessage {
+    type: typeof BINGX_PRODUCTS_MESSAGE;
+    result: unknown;
+}
+
+/** Settings page → worker: refresh BingX rates now (opens its Earn page in a background tab). */
+export const BINGX_REFRESH_MESSAGE = 'cmc-helper:bingx-refresh';
+
+/** Content script (CMC) → worker: the BingX rates saved last time, if any. */
+export const BINGX_RATES_MESSAGE = 'cmc-helper:bingx-rates';
+
 /** Content script → worker: where each portfolio coin is held, for personal Telegram alerts. */
 export const HOLDINGS_MESSAGE = 'cmc-helper:holdings';
 
 export interface HoldingsMessage {
     type: typeof HOLDINGS_MESSAGE;
     /** Lower-case symbol -> positions (portfolio name, USD value). */
-    holdings: Record<string, { portfolio: string; value: number }[]>;
+    holdings: Record<string, { portfolio: string; value: number; balance?: number }[]>;
 }
+
+/** Content script (CMC) → worker: exchange rates, from the worker's cache or loaded now (SerializedRates). */
+export const RATES_MESSAGE = 'cmc-helper:rates';
+
+/** Settings page → worker: send the weekly summary now; responds with CheckStatus-like { ok, message }. */
+export const DIGEST_NOW_MESSAGE = 'cmc-helper:digest-now';

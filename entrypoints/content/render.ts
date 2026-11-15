@@ -1,6 +1,6 @@
 import type { Rate } from '@/lib/exchanges';
 import {
-    estimateIncome, type ExchangeResolver, type Holding, type HoldingsByCoin, type IncomeRate
+    estimateIncome, formatCoins, type ExchangeResolver, type Holding, type HoldingsByCoin, type IncomeRate
 } from '@/lib/holdings';
 import { flexibleApr, type ExchangeRates, type RatesByCoin } from '@/lib/rates';
 import { h } from './dom';
@@ -146,12 +146,12 @@ function createCell(symbol: string, context: EarnContext) {
         'td',
         { class: CELL_CLASS, 'data-symbol': symbol },
         ...rows,
-        createIncome(holdings, exchangeRates, context)
+        createIncome(symbol, holdings, exchangeRates, context)
     );
 }
 
 /** "≈ $12/yr → $141/yr": yearly income now vs. at the best realistic rate. */
-function createIncome(holdings: Holding[], exchangeRates: ExchangeRates[], context: EarnContext) {
+function createIncome(symbol: string, holdings: Holding[], exchangeRates: ExchangeRates[], context: EarnContext) {
     if (holdings.length === 0) {
         return null;
     }
@@ -169,22 +169,35 @@ function createIncome(holdings: Holding[], exchangeRates: ExchangeRates[], conte
         rate ? `${rate.exchange.name} ${term(rate.days)} ${rate.apr.toFixed(2)}%` : ''
     );
 
+    // Coins per year (that's what lands in the wallet); USD only if the amounts aren't known.
+    const ticker = symbol.toUpperCase();
+    const amount = (coins: number | null, usdValue: number) => (
+        coins === null ? `${usd(usdValue)}/yr` : `${formatCoins(coins)} ${ticker}/yr`
+    );
+
     const text = context.hidden
         ? `≈ ${nowPercent.toFixed(2)}%${better ? ` → ${bestPercent.toFixed(2)}%` : ''} a year`
-        : `≈ ${usd(income.now)}/yr${better ? ` → ${usd(income.best)}/yr` : ''}`;
+        : `≈ ${amount(income.nowCoins, income.now)}${better ? ` → ${amount(income.bestCoins, income.best)}` : ''}`;
 
     return h(
         'div',
         {
             class: better ? 'cmc-helper-earn__income cmc-helper-earn__income--better' : 'cmc-helper-earn__income',
             title: 'Now: the best rate where the coin is held (0% in wallets and without an earn product).'
-                + `${better ? `\nBest: ${describe(income.bestRate)} (fixed terms under 7 days are ignored).` : ''}`
+                + `${better ? `\nBest: ${describe(income.bestRate)} (fixed terms up to 14 days are ignored).` : ''}`
         },
         text
     );
 }
 
-function createTip({ apr, days, unbondingDays }: Rate, bestFixed: number) {
+/** "8.00% up to 300, 3.20% from 300 to 10,000,000" */
+const describeTiers = (tiers: NonNullable<Rate['tiers']>) => tiers
+    .map(({ from, to, apr }, i) => (i === 0
+        ? `${apr.toFixed(2)}% up to ${to.toLocaleString('en-US')}`
+        : `${apr.toFixed(2)}% from ${from.toLocaleString('en-US')} to ${to.toLocaleString('en-US')}`))
+    .join(', ');
+
+function createTip({ apr, days, unbondingDays, tiers }: Rate, bestFixed: number) {
     const flexible = days === 0;
     const classes = ['cmc-helper-earn__tip'];
 
@@ -194,7 +207,11 @@ function createTip({ apr, days, unbondingDays }: Rate, bestFixed: number) {
         classes.push('cmc-helper-earn__tip--best-fixed');
     }
 
-    const title = unbondingDays ? `No lock-up; withdrawal takes ${unbondingDays} days after unstaking` : '';
+    const notes = [
+        unbondingDays ? `No lock-up; withdrawal takes ${unbondingDays} days after unstaking` : '',
+        tiers ? `Depends on the amount: ${describeTiers(tiers)}` : ''
+    ];
+    const title = notes.filter(Boolean).join('\n');
 
     return h(
         'span',

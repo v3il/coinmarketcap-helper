@@ -5,6 +5,30 @@ export interface Rate {
     days: number;
     /** For open-ended staking: days it takes to get coins back after unstaking (not a lock-up term). */
     unbondingDays?: number;
+    /**
+     * When the rate depends on the amount (BingX: 8% up to 300 USDT, 3.2% above): APR per amount range, in coins.
+     * `apr` is then the rate of the first tier.
+     */
+    tiers?: RateTier[];
+}
+
+export interface RateTier {
+    from: number;
+    to: number;
+    apr: number;
+}
+
+/** The APR an amount actually earns: tiers blended by how much falls into each; the headline APR without one. */
+export function effectiveApr(rate: Rate, amount?: number | null): number {
+    if (!rate.tiers?.length || !amount || amount <= 0) {
+        return rate.apr;
+    }
+
+    const earned = rate.tiers.reduce((sum, { from, to, apr }) => (
+        sum + Math.max(0, Math.min(amount, to) - from) * apr
+    ), 0);
+
+    return earned / amount;
 }
 
 /** Lower-case coin symbol -> available rates, flexible first, then by term. */
@@ -14,6 +38,8 @@ export interface Exchange {
     id: string;
     name: string;
     logoUrl: string;
+    /** Rates come from extension storage, not the network (BingX): always read fresh, never cached. */
+    local?: boolean;
     loadRates(): Promise<CoinRates>;
 }
 

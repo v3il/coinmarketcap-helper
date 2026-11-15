@@ -83,6 +83,10 @@ const formatPrice = (value: number) => (value >= 1 ? value.toFixed(2) : value.to
 /** Last state of the "Free" checkbox, kept while the tab is open (you usually sync several rewards in a row). */
 let lastFree = false;
 
+/** Type the new total, or just the change (+12 / -5). Remembered while the tab is open. */
+type Mode = 'total' | 'change';
+let lastMode: Mode = 'total';
+
 function closeEditors() {
     document.querySelectorAll(`.${EDITOR_CLASS}`).forEach((editor) => editor.remove());
 }
@@ -105,18 +109,36 @@ function openEditor(cell: HTMLElement, symbol: string, places: Place[], context:
     }
 
     let place = places[0];
-    // Whole coins only (fractions get rounded anyway); the difference is taken from the exact current amount,
-    // so after adding it the portfolio holds exactly the typed number.
-    const prefill = () => (context.hidden ? '' : String(Math.round(place.balance)));
+    let mode = lastMode;
+    // Whole coins only (fractions get rounded anyway). In "total" mode the difference is taken from the exact current
+    // amount, so after adding it the portfolio holds exactly the typed number.
+    const prefill = () => (mode === 'change' || context.hidden ? '' : String(Math.round(place.balance)));
+    const placeholder = () => (mode === 'change' ? '+12 or -5' : `New ${ticker} total`);
 
     const input = h('input', {
         type: 'text',
         inputmode: 'numeric',
         autocomplete: 'off',
-        placeholder: `New ${ticker} amount`,
         'aria-label': `New ${ticker} amount`
     });
     input.value = prefill();
+    input.placeholder = placeholder();
+
+    const modeButton = (value: Mode, label: string, title: string) => {
+        const button = h('button', { type: 'button', class: `${EDITOR_CLASS}__mode`, title }, label);
+        button.dataset.mode = value;
+        return button;
+    };
+    const modes = h(
+        'div',
+        { class: `${EDITOR_CLASS}__modes`, role: 'group', 'aria-label': 'Input mode' },
+        modeButton('total', 'Total', 'Type the new total amount'),
+        modeButton('change', '±', 'Type how many coins to add (+12) or remove (-5)')
+    );
+    const syncModes = () => modes.querySelectorAll('button').forEach((button) => {
+        button.classList.toggle(`${EDITOR_CLASS}__mode--active`, button.dataset.mode === mode);
+    });
+    syncModes();
 
     // Several portfolios hold this coin (overview): pick which one to change.
     const picker = places.length > 1
@@ -151,7 +173,7 @@ function openEditor(cell: HTMLElement, symbol: string, places: Place[], context:
         'div',
         { class: EDITOR_CLASS, role: 'dialog', 'aria-label': `Set ${ticker} amount` },
         picker,
-        h('div', { class: `${EDITOR_CLASS}__row` }, input, freeLabel, confirm, cancel),
+        h('div', { class: `${EDITOR_CLASS}__row` }, modes, input, freeLabel, confirm, cancel),
         status
     );
 
@@ -165,20 +187,30 @@ function openEditor(cell: HTMLElement, symbol: string, places: Place[], context:
         status.className = `${EDITOR_CLASS}__status`;
 
         if (input.value.trim() === '') {
-            status.textContent = 'Type the amount you have now';
+            status.textContent = mode === 'change'
+                ? 'Type how many coins to add or remove'
+                : 'Type the amount you have now';
             return;
         }
 
-        if (!/^\d+$/.test(text) || !Number.isFinite(value)) {
+        const pattern = mode === 'change' ? /^[+-]?\d+$/ : /^\d+$/;
+
+        if (!pattern.test(text) || !Number.isFinite(value)) {
             status.textContent = 'Whole coins only';
             status.classList.add(`${EDITOR_CLASS}__status--error`);
             return;
         }
 
-        const diff = Number(formatAmount(value - place.balance));
+        const diff = mode === 'change' ? value : Number(formatAmount(value - place.balance));
 
         if (diff === 0) {
             status.textContent = 'Same as now — nothing to add';
+            return;
+        }
+
+        if (place.balance + diff < -1e-9) {
+            status.textContent = 'Can\'t remove more than you have';
+            status.classList.add(`${EDITOR_CLASS}__status--error`);
             return;
         }
 
@@ -226,6 +258,20 @@ function openEditor(cell: HTMLElement, symbol: string, places: Place[], context:
     };
 
     input.addEventListener('input', preview);
+    modes.addEventListener('click', (event) => {
+        const target = (event.target as HTMLElement).closest<HTMLElement>('[data-mode]');
+        const value = target?.dataset.mode as Mode | undefined;
+
+        if (!value || value === mode) return;
+
+        mode = value;
+        lastMode = value;
+        syncModes();
+        input.value = prefill();
+        input.placeholder = placeholder();
+        preview();
+        input.focus();
+    });
     free.addEventListener('change', () => {
         lastFree = free.checked;
         preview();
@@ -256,7 +302,7 @@ function openEditor(cell: HTMLElement, symbol: string, places: Place[], context:
 }
 
 /**
- * Adds a ✎ over the amount cell of each row: Holdings on a single-portfolio table, Balance on the overview.
+ * Adds a small "+" after the amount in each row: Holdings on a single-portfolio table, Balance on the overview.
  * Idempotent; the button and the editor are absolutely positioned, so the table layout never changes.
  */
 export function renderAmountEditors(context: AmountEditorContext) {
@@ -315,8 +361,12 @@ export function renderAmountEditors(context: AmountEditorContext) {
 
         const button = h(
             'button',
-            { type: 'button', class: BUTTON_CLASS, title: `Set ${symbol.toUpperCase()} amount…` },
-            '✎'
+            {
+                type: 'button',
+                class: BUTTON_CLASS,
+                title: `Set ${symbol.toUpperCase()} amount…`,
+                'aria-label': `Set ${symbol.toUpperCase()} amount`
+            }
         );
         button.dataset.key = key;
         button.addEventListener('click', (event) => {

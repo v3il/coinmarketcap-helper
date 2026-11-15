@@ -1,21 +1,43 @@
 import { useEffect, useState } from 'preact/hooks';
 import { EXCHANGES } from '@/lib/exchanges';
 import { guessExchange, NOT_AN_EXCHANGE } from '@/lib/holdings';
-import { CHECK_NOW_MESSAGE } from '@/lib/messages';
+import { BINGX_EARN_URL } from '@/lib/exchanges/bingx';
+import { BINGX_REFRESH_MESSAGE, CHECK_NOW_MESSAGE, DIGEST_NOW_MESSAGE } from '@/lib/messages';
 import { getPortfolioSymbols } from '@/lib/portfolio';
 import {
+    bingxRatesItem,
     DEFAULT_SETTINGS,
     getSettings,
     knownPortfoliosItem,
     lastCheckItem,
     portfolioItem,
     settingsItem,
+    type BingxRates,
     type CheckStatus,
     type Settings
 } from '@/lib/storage';
 import { findLatestChat, sendMessage } from '@/lib/telegram';
 
 type Notice = { kind: 'ok' | 'error'; text: string } | null;
+
+// Monday first; values are Date.getDay() numbers (0 = Sunday).
+const WEEKDAYS: [number, string][] = [
+    [1, 'Monday'], [2, 'Tuesday'], [3, 'Wednesday'], [4, 'Thursday'], [5, 'Friday'], [6, 'Saturday'], [0, 'Sunday']
+];
+
+/**
+ * Asks the background worker. No answer means the worker running in Chrome is older than this page
+ * (the extension's files were updated, but the extension wasn't reloaded).
+ */
+async function askWorker<T>(type: string): Promise<T> {
+    const response: T | undefined = await chrome.runtime.sendMessage({ type });
+
+    if (response === undefined) {
+        throw new Error('The extension didn’t answer. Reload it on chrome://extensions and try again.');
+    }
+
+    return response;
+}
 
 const formatTime = (ms: number) => new Date(ms).toLocaleString();
 
@@ -26,6 +48,8 @@ export function App() {
     const [symbols, setSymbols] = useState<string[]>([]);
     const [knownPortfolios, setKnownPortfolios] = useState<string[]>([]);
     const [notice, setNotice] = useState<Notice>(null);
+    const [bingxRates, setBingxRates] = useState<BingxRates | null>(null);
+    const [bingxNotice, setBingxNotice] = useState<Notice>(null);
     const [busy, setBusy] = useState(false);
 
     useEffect(() => {
@@ -34,17 +58,20 @@ export function App() {
             setSaved(value);
         });
         lastCheckItem.getValue().then(setLastCheck);
+        bingxRatesItem.getValue().then(setBingxRates);
         getPortfolioSymbols().then(setSymbols);
         knownPortfoliosItem.getValue().then(setKnownPortfolios);
 
         const unwatchCheck = lastCheckItem.watch(setLastCheck);
         const unwatchPortfolio = portfolioItem.watch(() => getPortfolioSymbols().then(setSymbols));
         const unwatchKnown = knownPortfoliosItem.watch(setKnownPortfolios);
+        const unwatchBingx = bingxRatesItem.watch(setBingxRates);
 
         return () => {
             unwatchCheck();
             unwatchPortfolio();
             unwatchKnown();
+            unwatchBingx();
         };
     }, []);
 
@@ -72,6 +99,16 @@ export function App() {
             chatId: form.chatId.trim(),
             minIncrease: Math.max(0.1, form.minIncrease || DEFAULT_SETTINGS.minIncrease),
             intervalHours: Math.min(24, Math.max(1, Math.round(form.intervalHours || DEFAULT_SETTINGS.intervalHours))),
+            minPositionUsd: Number.isFinite(form.minPositionUsd)
+                ? Math.max(0, form.minPositionUsd)
+                : DEFAULT_SETTINGS.minPositionUsd,
+            promoAlerts: form.promoAlerts,
+            bingxAutoRefresh: form.bingxAutoRefresh,
+            minPromoApr: Number.isFinite(form.minPromoApr)
+                ? Math.max(0, form.minPromoApr)
+                : DEFAULT_SETTINGS.minPromoApr,
+            weeklyDigest: form.weeklyDigest,
+            digestDay: form.digestDay,
             excludedPortfolios: form.excludedPortfolios,
             portfolioExchanges: form.portfolioExchanges
         };
@@ -116,6 +153,23 @@ export function App() {
         setSaved((value) => ({ ...value, portfolioExchanges }));
     };
 
+    // Saves right away, like the portfolio checkboxes.
+    const onToggleBingx = async (bingxAutoRefresh: boolean) => {
+        const current = await getSettings();
+
+        await settingsItem.setValue({ ...current, bingxAutoRefresh });
+        setForm((value) => ({ ...value, bingxAutoRefresh }));
+        setSaved((value) => ({ ...value, bingxAutoRefresh }));
+    };
+
+    const onRefreshBingx = async () => {
+        setBingxNotice({ kind: 'ok', text: 'Loading BingX in a background tab…' });
+        const ok = await askWorker<boolean>(BINGX_REFRESH_MESSAGE).catch(() => false);
+        setBingxNotice(ok
+            ? { kind: 'ok', text: 'Rates updated' }
+            : { kind: 'error', text: 'BingX didn’t load the rates. Open the Earn page yourself and try again.' });
+    };
+
     const onFindChat = () => run(async () => {
         const chat = await findLatestChat(form.botToken.trim());
 
@@ -134,13 +188,24 @@ export function App() {
 
     const onCheckNow = () => run(async () => {
         await save();
-        const status: CheckStatus = await chrome.runtime.sendMessage({ type: CHECK_NOW_MESSAGE });
+        const status = await askWorker<CheckStatus>(CHECK_NOW_MESSAGE);
 
         if (!status.ok) {
             throw new Error(status.message);
         }
 
         return `Checked. ${status.message}`;
+    });
+
+    const onDigestNow = () => run(async () => {
+        await save();
+        const result = await askWorker<{ ok: boolean; message: string }>(DIGEST_NOW_MESSAGE);
+
+        if (!result.ok) {
+            throw new Error(result.message);
+        }
+
+        return result.message;
     });
 
     return (
@@ -151,14 +216,15 @@ export function App() {
                 <h2>Portfolios</h2>
                 <p class="hint">
                     Where each CoinMarketCap portfolio is held, so the Earn column can show where a coin earns
-                    now and how much more it could. Guessed from the name until you pick. Uncheck “In totals”
-                    for portfolios that aren’t investments, e.g. savings.
+                    now and how much more it could. Guessed from the name until you pick. Uncheck “Counted”
+                    for portfolios that aren’t investments, e.g. savings: they’re left out of the totals, the income
+                    estimate and Telegram alerts.
                 </p>
                 {knownPortfolios.length > 0 ? (
                     <div class="portfolios">
                         <span class="portfolios__head">Portfolio</span>
                         <span class="portfolios__head">Held on</span>
-                        <span class="portfolios__head">In totals</span>
+                        <span class="portfolios__head">Counted</span>
                         {knownPortfolios.map((name) => [
                             <span key={`${name}-name`} class="portfolios__name">{name}</span>,
                             <select
@@ -175,7 +241,7 @@ export function App() {
                             <input
                                 key={`${name}-totals`}
                                 type="checkbox"
-                                aria-label={`Count ${name} in totals`}
+                                aria-label={`Count ${name} in totals, income and alerts`}
                                 checked={!isExcluded(name)}
                                 onChange={(e) => onTogglePortfolio(name, e.currentTarget.checked)}
                             />
@@ -187,10 +253,40 @@ export function App() {
             </section>
 
             <section>
+                <h2>BingX</h2>
+                <p class="hint">
+                    BingX has no public API for Earn rates. The extension reads them when its
+                    {' '}
+                    <a href={BINGX_EARN_URL} target="_blank" rel="noreferrer">Earn page</a>
+                    {' '}
+                    is open: when you visit it, or automatically before each check (the page opens in a background
+                    tab for a few seconds and closes; focus stays where it is). New-user and VIP offers are skipped.
+                </p>
+                <p>
+                    {bingxRates
+                        ? `Rates from ${formatTime(bingxRates.at)} (${Object.keys(bingxRates.rates).length} coins)`
+                        : 'No rates yet.'}
+                </p>
+                <div class="row">
+                    <label class="checkbox">
+                        <input
+                            type="checkbox"
+                            checked={form.bingxAutoRefresh}
+                            onChange={(e) => onToggleBingx(e.currentTarget.checked)}
+                        />
+                        <span>Refresh automatically before each check</span>
+                    </label>
+                    <button type="button" onClick={onRefreshBingx}>Refresh now</button>
+                </div>
+                {bingxNotice && <p class={`notice notice--${bingxNotice.kind}`}>{bingxNotice.text}</p>}
+            </section>
+
+            <section>
                 <h2>Telegram alerts</h2>
                 <p class="hint">
                     Every few hours the extension checks rates for the coins in your portfolio and messages you
-                    when the best rate for a coin goes up.
+                    when the best rate for a coin goes up. Fixed terms up to 14 days are treated as promos: they
+                    don’t count as the best rate and get their own alerts.
                 </p>
 
                 <form onSubmit={onSave}>
@@ -248,12 +344,78 @@ export function App() {
                         </label>
                     </div>
 
+                    <label>
+                        <span>Skip coins worth less than, $</span>
+                        <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={form.minPositionUsd}
+                            onInput={(e) => update('minPositionUsd', e.currentTarget.valueAsNumber)}
+                        />
+                        <small>
+                            No alerts for coins you keep just to watch the price (counted portfolios only). 0 = all.
+                        </small>
+                    </label>
+
+                    <div class="row">
+                        <label class="checkbox">
+                            <input
+                                type="checkbox"
+                                checked={form.promoAlerts}
+                                onChange={(e) => update('promoAlerts', e.currentTarget.checked)}
+                            />
+                            <span>Promo alerts (up to 14 days)</span>
+                        </label>
+
+                        <label>
+                            <span>Promos from, % APR</span>
+                            <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                disabled={!form.promoAlerts}
+                                value={form.minPromoApr}
+                                onInput={(e) => update('minPromoApr', e.currentTarget.valueAsNumber)}
+                            />
+                        </label>
+                    </div>
+
+                    <div class="row">
+                        <label class="checkbox">
+                            <input
+                                type="checkbox"
+                                checked={form.weeklyDigest}
+                                onChange={(e) => update('weeklyDigest', e.currentTarget.checked)}
+                            />
+                            <span>Weekly summary</span>
+                        </label>
+
+                        <label>
+                            <span>Every</span>
+                            <select
+                                disabled={!form.weeklyDigest}
+                                value={form.digestDay}
+                                onChange={(e) => update('digestDay', Number(e.currentTarget.value))}
+                            >
+                                {WEEKDAYS.map(([day, name]) => <option key={day} value={day}>{name}</option>)}
+                            </select>
+                        </label>
+                    </div>
+                    <small class="note">
+                        Income now vs at the best rates, the best moves and running promos. Sent with the first check
+                        after 9:00.
+                    </small>
+
                     <div class="actions">
                         <button type="submit" class="primary" disabled={busy || !dirty}>Save</button>
                         <button type="button" disabled={busy || !form.botToken || !form.chatId} onClick={onTest}>
                             Send test message
                         </button>
                         <button type="button" disabled={busy} onClick={onCheckNow}>Check now</button>
+                        <button type="button" disabled={busy || !form.botToken || !form.chatId} onClick={onDigestNow}>
+                            Send summary now
+                        </button>
                     </div>
 
                     {notice && <p class={`notice notice--${notice.kind}`}>{notice.text}</p>}
