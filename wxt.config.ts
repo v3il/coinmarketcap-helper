@@ -27,6 +27,7 @@ export default defineConfig({
             'https://www.mexc.com/*',
             'https://internal.whitebit.com/*',
             'https://cloud.argent-api.com/*',
+            'https://chains.cosmos.directory/*',
             'https://api.telegram.org/*'
         ]
     }
