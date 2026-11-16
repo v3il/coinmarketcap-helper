@@ -274,6 +274,11 @@
     font-weight: 700;
 }
 
+.cmc-helper-totals__sub {
+    font-size: 12px;
+    opacity: 0.75;
+}
+
 .cmc-helper-totals__value--up {
     color: #16c784;
 }

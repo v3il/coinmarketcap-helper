@@ -1,4 +1,7 @@
+import type { ExchangeResolver, HoldingsByCoin } from '@/lib/holdings';
+import { formatIncomeStat, formatMovesTip, portfolioIncome } from '@/lib/income';
 import { PORTFOLIO_NAMES_MESSAGE, type PortfolioNamesMessage } from '@/lib/messages';
+import type { RatesByCoin } from '@/lib/rates';
 import { fetchPortfolios, fetchPortfolioTotals, sumTotals, type PortfolioTotals } from './cmcApi';
 import { h } from './dom';
 import { loadPageSettings } from './pageSettings';
@@ -8,7 +11,23 @@ const BANNER_CLASS = 'cmc-helper-totals';
 const CACHE_TTL_MS = 2 * 60 * 1000;
 /** After a failed load, wait this long before trying again. */
 const RETRY_AFTER_MS = 30 * 1000;
-let cache: { at: number; ttl: number; promise: Promise<PortfolioTotals | null> } | null = null;
+/** Totals of the portfolios the banner counts, and their names (the income stat counts the same ones). */
+interface BannerTotals extends PortfolioTotals {
+    portfolios: Set<string>;
+}
+
+/** What the yearly-income stat needs; until rates arrive the stat shows "…". */
+export interface IncomeInput {
+    byCoin: RatesByCoin;
+    holdings: HoldingsByCoin;
+    resolve: ExchangeResolver;
+    /** Changes whenever rates or holdings do, so the banner re-renders. */
+    version: string;
+}
+
+let cache: { at: number; ttl: number; promise: Promise<BannerTotals | null> } | null = null;
+/** The latest income input, reused by the calls made before rates are ready (no flicker back to "…"). */
+let lastIncome: IncomeInput | undefined;
 
 /** Lower-case names of portfolios the user excluded from the totals in the extension settings. */
 async function getExcludedPortfolios(): Promise<Set<string>> {
@@ -30,12 +49,12 @@ export function invalidateTotals() {
  * Totals across the portfolios CMC counts in the overall balance, minus the ones excluded in the settings
  * (CMC itself shows P/L only per portfolio).
  */
-function loadTotals(): Promise<PortfolioTotals | null> {
+function loadTotals(): Promise<BannerTotals | null> {
     if (cache && Date.now() - cache.at < cache.ttl) {
         return cache.promise;
     }
 
-    const entry = { at: Date.now(), ttl: CACHE_TTL_MS, promise: Promise.resolve<PortfolioTotals | null>(null) };
+    const entry = { at: Date.now(), ttl: CACHE_TTL_MS, promise: Promise.resolve<BannerTotals | null>(null) };
 
     entry.promise = (async () => {
         const [all, excluded] = await Promise.all([fetchPortfolios(), getExcludedPortfolios()]);
@@ -45,7 +64,8 @@ function loadTotals(): Promise<PortfolioTotals | null> {
 
         const portfolios = all.filter((portfolio) => portfolio.counted
             && !excluded.has(portfolio.name.trim().toLowerCase()));
-        return sumTotals(await Promise.all(portfolios.map((portfolio) => fetchPortfolioTotals(portfolio.id))));
+        const totals = sumTotals(await Promise.all(portfolios.map((portfolio) => fetchPortfolioTotals(portfolio.id))));
+        return { ...totals, portfolios: new Set(portfolios.map(({ name }) => name)) };
     })().catch((error) => {
         console.warn('[cmc-helper] Failed to load portfolio totals', error);
         entry.ttl = RETRY_AFTER_MS;
@@ -64,7 +84,20 @@ const signClass = (value: number) => {
     return '';
 };
 
-function fill(banner: HTMLElement, totals: PortfolioTotals, hidden: boolean) {
+function incomeStat(totals: BannerTotals, income: IncomeInput | undefined, hidden: boolean) {
+    if (!income) {
+        return { main: '…', percent: '', title: 'Loading rates…' };
+    }
+
+    const holdings = Object.fromEntries(income.holdings);
+    const result = portfolioIncome(holdings, income.byCoin, income.resolve, (name) => totals.portfolios.has(name));
+    return {
+        ...formatIncomeStat(result, hidden),
+        title: `A year at the current rates → with every coin at its best rate.\n${formatMovesTip(result.moves)}`
+    };
+}
+
+function fill(banner: HTMLElement, totals: BannerTotals, hidden: boolean, income: IncomeInput | undefined) {
     // When CMC hides balances (****), hide amounts too and keep only the percentage.
     const money = (value: number, signed = false) => {
         if (hidden) return '*****';
@@ -94,6 +127,18 @@ function fill(banner: HTMLElement, totals: PortfolioTotals, hidden: boolean) {
         stat('Value', money(totals.value)),
         stat('Profit / Loss', hidden ? percent : `${money(totals.pl, true)} (${percent})`, signClass(totals.pl))
     );
+
+    // No rates at all (the worker failed): leave the income stat out rather than show 0%.
+    if (!income || income.byCoin.size > 0) {
+        const earn = incomeStat(totals, income, hidden);
+        banner.append(h(
+            'div',
+            { class: `${BANNER_CLASS}__stat`, title: earn.title },
+            h('span', { class: `${BANNER_CLASS}__label` }, 'Earn / yr'),
+            h('span', { class: `${BANNER_CLASS}__value` }, earn.main),
+            ...(earn.percent ? [h('span', { class: `${BANNER_CLASS}__sub` }, earn.percent)] : [])
+        ));
+    }
     banner.hidden = false;
 }
 
@@ -128,7 +173,9 @@ function findAnchor(table: HTMLTableElement): Element {
  * Shows invested / value / profit-loss across all portfolios at the top of the portfolio page, on the overview
  * and on every single-portfolio page. Idempotent: only re-renders when CMC's hide-balances mode changes.
  */
-export function renderTotalsBanner() {
+export function renderTotalsBanner(next?: IncomeInput) {
+    lastIncome = next ?? lastIncome;
+    const income = lastIncome;
     const table = document.querySelector<HTMLTableElement>(TABLE_SELECTOR);
 
     if (!table?.querySelector('tbody tr')) {
@@ -145,7 +192,7 @@ export function renderTotalsBanner() {
     }
 
     const hidden = (table.textContent ?? '').includes('****');
-    const renderKey = String(hidden);
+    const renderKey = `${hidden}|${income?.version ?? ''}`;
 
     if (banner.dataset.key === renderKey) {
         return;
@@ -159,7 +206,7 @@ export function renderTotalsBanner() {
         }
 
         if (totals) {
-            fill(banner, totals, hidden);
+            fill(banner, totals, hidden, income);
             return;
         }
 

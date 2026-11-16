@@ -127,13 +127,21 @@ export function main() {
         const counted = snapshot && new Map([...snapshot.holdings]
             .map(([symbol, places]) => [symbol, withoutExcluded(places, excluded)]));
 
+        const resolveExchange = exchangeResolver(settings?.portfolioExchanges);
+
         renderEarnColumn({
             rates: byCoin,
             holdings: counted,
-            resolveExchange: exchangeResolver(settings?.portfolioExchanges),
+            resolveExchange,
             hidden,
             version: `${version}|${hidden}`
         });
+
+        if (snapshot) {
+            renderTotalsBanner({
+                byCoin, holdings: snapshot.holdings, resolve: resolveExchange, version: String(version)
+            });
+        }
     };
 
     // A transaction was added: make CMC reload its current view, and reload our own data.
