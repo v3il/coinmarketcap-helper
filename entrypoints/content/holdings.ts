@@ -1,4 +1,6 @@
-import { fetchPortfolioSnapshot, type PortfolioSnapshot } from './cmcApi';
+import {
+    fetchPortfolios, fetchPortfolioSnapshot, fetchPositionCosts, type PortfolioSnapshot, type PositionCosts
+} from './cmcApi';
 
 const CACHE_TTL_MS = 2 * 60 * 1000;
 /** After a failed load, wait this long before trying again. */
@@ -30,4 +32,25 @@ export function loadHoldings(): Promise<PortfolioSnapshot | null> {
 /** Drop cached holdings, e.g. after adding a transaction. */
 export function invalidateHoldings() {
     cache = null;
+    costsCache = null;
+}
+
+/** Costs change only with transactions: a longer cache, one request per portfolio. */
+const COSTS_TTL_MS = 10 * 60 * 1000;
+let costsCache: { at: number; promise: Promise<PositionCosts> } | null = null;
+
+/** What each position cost (for the P/L % in price-jump alerts); empty when CMC doesn't answer. */
+export function loadPositionCosts(): Promise<PositionCosts> {
+    if (costsCache && Date.now() - costsCache.at < COSTS_TTL_MS) {
+        return costsCache.promise;
+    }
+
+    const promise = fetchPortfolios().then(fetchPositionCosts).catch((error) => {
+        console.warn('[cmc-helper] Failed to load position costs', error);
+        costsCache = null;
+        return new Map() as PositionCosts;
+    });
+
+    costsCache = { at: Date.now(), promise };
+    return promise;
 }

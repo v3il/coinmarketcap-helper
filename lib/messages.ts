@@ -50,8 +50,10 @@ export const HOLDINGS_MESSAGE = 'cmc-helper:holdings';
 
 export interface HoldingsMessage {
     type: typeof HOLDINGS_MESSAGE;
-    /** Lower-case symbol -> positions (portfolio name, USD value). */
-    holdings: Record<string, { portfolio: string; value: number; balance?: number }[]>;
+    /** Lower-case symbol -> positions (portfolio name, USD value, amount, what it cost). */
+    holdings: Record<string, { portfolio: string; value: number; balance?: number; cost?: number }[]>;
+    /** Lower-case symbol -> CMC coin id (for prices in the worker). */
+    coinIds?: Record<string, number>;
 }
 
 /** Content script (CMC) → worker: exchange rates, from the worker's cache or loaded now (SerializedRates). */

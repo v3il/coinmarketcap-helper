@@ -21,7 +21,7 @@ import { checkRates, sendDigestNow } from '@/lib/notifier';
 import { rememberPortfolioSymbols } from '@/lib/portfolio';
 import { getRates, PAGE_MAX_AGE_MS } from '@/lib/ratesCache';
 import {
-    bingxRatesItem, getSettings, holdingsItem, knownPortfoliosItem, settingsItem
+    bingxRatesItem, coinIdsItem, getSettings, holdingsItem, knownPortfoliosItem, settingsItem
 } from '@/lib/storage';
 import { FETCH_MESSAGE, fetchDirect, type FetchRequest } from '@/utils/request';
 
@@ -93,10 +93,14 @@ export default defineBackground(() => {
         }
 
         if (message?.type === HOLDINGS_MESSAGE) {
-            const { holdings } = message as HoldingsMessage;
+            const { holdings, coinIds } = message as HoldingsMessage;
 
             if (holdings && typeof holdings === 'object') {
                 holdingsItem.setValue(holdings);
+            }
+
+            if (coinIds && typeof coinIds === 'object') {
+                coinIdsItem.setValue(coinIds);
             }
 
             return false;

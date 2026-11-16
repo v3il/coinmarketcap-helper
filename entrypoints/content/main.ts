@@ -11,7 +11,7 @@ import {
 import { deserializeRates, type LoadedRates, type SerializedRates } from '@/lib/rates';
 import { renderAmountEditors } from './amountEditor';
 import type { PortfolioSnapshot } from './cmcApi';
-import { invalidateHoldings, loadHoldings } from './holdings';
+import { invalidateHoldings, loadHoldings, loadPositionCosts } from './holdings';
 import { invalidatePageSettings, loadPageSettings } from './pageSettings';
 import {
     areBalancesHidden, getPortfolioTableSymbols, hasPortfolioTable, renderEarnColumn
@@ -54,12 +54,17 @@ export function main() {
     };
 
     // Positions for personal Telegram alerts (kept in the extension's local storage).
-    const reportHoldings = (value: PortfolioSnapshot) => {
+    const reportHoldings = async (value: PortfolioSnapshot) => {
+        const costs = await loadPositionCosts();
         const holdings = Object.fromEntries([...value.holdings].map(([symbol, places]) => [
             symbol,
-            places.map(({ portfolio, value: usd, balance }) => ({ portfolio, value: usd, balance }))
+            places.map(({ portfolio, value: usd, balance }) => {
+                const cost = costs.get(symbol)?.get(portfolio);
+                return { portfolio, value: usd, balance, ...(cost === undefined ? {} : { cost }) };
+            })
         ]));
-        const message: HoldingsMessage = { type: HOLDINGS_MESSAGE, holdings };
+        const coinIds = Object.fromEntries([...value.coins].map(([symbol, { id }]) => [symbol, id]));
+        const message: HoldingsMessage = { type: HOLDINGS_MESSAGE, holdings, coinIds };
         chrome.runtime.sendMessage(message).catch(() => {});
     };
 

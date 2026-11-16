@@ -32,6 +32,7 @@ export default defineConfig({
             'https://api.mainnet.aptoslabs.com/*',
             'https://rest.cosmos.directory/*',
             'https://graphql.mainnet.sui.io/*',
+            'https://api.coinmarketcap.com/*',
             'https://api.telegram.org/*'
         ]
     }

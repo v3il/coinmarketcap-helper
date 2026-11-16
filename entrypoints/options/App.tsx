@@ -107,6 +107,10 @@ export function App() {
             minPromoApr: Number.isFinite(form.minPromoApr)
                 ? Math.max(0, form.minPromoApr)
                 : DEFAULT_SETTINGS.minPromoApr,
+            jumpAlerts: form.jumpAlerts,
+            minJumpPercent: Number.isFinite(form.minJumpPercent) && form.minJumpPercent > 0
+                ? form.minJumpPercent
+                : DEFAULT_SETTINGS.minJumpPercent,
             weeklyDigest: form.weeklyDigest,
             digestDay: form.digestDay,
             excludedPortfolios: form.excludedPortfolios,
@@ -377,6 +381,29 @@ export function App() {
                                 disabled={!form.promoAlerts}
                                 value={form.minPromoApr}
                                 onInput={(e) => update('minPromoApr', e.currentTarget.valueAsNumber)}
+                            />
+                        </label>
+                    </div>
+
+                    <div class="row">
+                        <label class="checkbox">
+                            <input
+                                type="checkbox"
+                                checked={form.jumpAlerts}
+                                onChange={(e) => update('jumpAlerts', e.currentTarget.checked)}
+                            />
+                            <span>Price jump alerts (any coin you hold)</span>
+                        </label>
+
+                        <label>
+                            <span>From +%, since the last check</span>
+                            <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                disabled={!form.jumpAlerts}
+                                value={form.minJumpPercent}
+                                onInput={(e) => update('minJumpPercent', e.currentTarget.valueAsNumber)}
                             />
                         </label>
                     </div>

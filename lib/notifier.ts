@@ -12,6 +12,7 @@ import {
 import { refreshBingx } from './bingxRefresh';
 import { findNewExchanges, withoutExchanges } from './newExchanges';
 import { isDigestDue, sendDigest, usd } from './digest';
+import { runJumpCheck } from './jumpCheck';
 import { escapeHtml, sendMessage } from './telegram';
 
 /** A short fixed-term offer (promo) worth a look: announced once, again only if its APR goes up. */
@@ -354,6 +355,16 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
 
     await knownRatesItem.setValue(next);
     await knownPromosItem.setValue(nextPromos);
+
+    // Price jumps of held coins, however small (lottery coins); one message for all of them.
+    const jumpCheck = await runJumpCheck(settings, holdings);
+
+    if (jumpCheck.ok) {
+        message += jumpCheck.jumps > 0 ? `, price jumps: ${jumpCheck.jumps}` : '';
+    } else if (ok) {
+        ok = false;
+        message = jumpCheck.error;
+    }
 
     // The weekly summary goes with the first check after its time; if Telegram fails, the next check retries.
     if (ok && await isDigestDue(settings)) {

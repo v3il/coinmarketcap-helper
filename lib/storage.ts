@@ -14,6 +14,9 @@ export interface Settings {
     /** Also notify about short promos (fixed terms of 14 days or less) from this APR, %. */
     promoAlerts: boolean;
     minPromoApr: number;
+    /** Notify when a held coin's price is up by at least minJumpPercent since the previous check. */
+    jumpAlerts: boolean;
+    minJumpPercent: number;
     /** A weekly Telegram summary: income now vs at the best rates, the best moves, running promos. */
     weeklyDigest: boolean;
     /** Day of the week for the summary, 0 = Sunday (Date.getDay); sent with the first check after 9:00. */
@@ -34,6 +37,8 @@ export const DEFAULT_SETTINGS: Settings = {
     minPositionUsd: 10,
     promoAlerts: true,
     minPromoApr: 50,
+    jumpAlerts: true,
+    minJumpPercent: 30,
     weeklyDigest: true,
     digestDay: 1,
     bingxAutoRefresh: false,
@@ -79,7 +84,13 @@ export const knownRatesItem = storage.defineItem<Record<string, CoinSnapshot>>('
 export const knownPortfoliosItem = storage.defineItem<string[]>('local:knownPortfolios', { fallback: [] });
 
 /** Lower-case coin symbol -> positions (portfolio name, USD value), as last seen on CMC; for personal alerts. */
-type StoredHolding = { portfolio: string; value: number; balance?: number };
+type StoredHolding = {
+    portfolio: string;
+    value: number;
+    balance?: number;
+    /** What the position cost: value − CMC's P/L for it, USD (for the P/L % in price-jump alerts). */
+    cost?: number;
+};
 
 export const holdingsItem = storage.defineItem<Record<string, StoredHolding[]>>(
     'local:holdings',
@@ -116,3 +127,12 @@ export const ratesCacheItem = storage.defineItem<Record<string, CachedExchangeRa
 export const lastDigestItem = storage.defineItem<number | null>('local:lastDigest', { fallback: null });
 
 export const lastCheckItem = storage.defineItem<CheckStatus | null>('local:lastCheck', { fallback: null });
+
+/** Lower-case coin symbol -> CMC coin id, as last seen on coinmarketcap.com (for prices in the worker). */
+export const coinIdsItem = storage.defineItem<Record<string, number>>('local:coinIds', { fallback: {} });
+
+/** Lower-case coin symbol -> its price at the previous check: the baseline for price-jump alerts. */
+export const priceBaselinesItem = storage.defineItem<Record<string, { price: number; at: number }>>(
+    'local:priceBaselines',
+    { fallback: {} }
+);
