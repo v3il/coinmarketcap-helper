@@ -30,6 +30,8 @@ export default defineConfig({
             'https://chains.cosmos.directory/*',
             'https://api.mainnet-beta.solana.com/*',
             'https://api.mainnet.aptoslabs.com/*',
+            'https://rest.cosmos.directory/*',
+            'https://graphql.mainnet.sui.io/*',
             'https://api.telegram.org/*'
         ]
     }
