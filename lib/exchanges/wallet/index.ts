@@ -1,12 +1,13 @@
 import { toRates, type Exchange, type Rate } from '../common';
 import { cosmos } from './cosmos';
+import { solana } from './solana';
 import type { NetworkModule } from './types';
 
 export type { NetworkModule } from './types';
 
 // Native staking with the network itself (Keplr, Phantom, Leo… only delegate to a validator), so the rate belongs
 // to the coin's network, not to a wallet. Shown for every coin that has one, wherever it's held.
-export const WALLET_MODULES: NetworkModule[] = [cosmos];
+export const WALLET_MODULES: NetworkModule[] = [cosmos, solana];
 
 const LOGO_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#3861fb"/>'

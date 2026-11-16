@@ -28,6 +28,7 @@ export default defineConfig({
             'https://internal.whitebit.com/*',
             'https://cloud.argent-api.com/*',
             'https://chains.cosmos.directory/*',
+            'https://api.mainnet-beta.solana.com/*',
             'https://api.telegram.org/*'
         ]
     }
