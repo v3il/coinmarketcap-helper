@@ -14,14 +14,19 @@ It can also watch those rates in the background and message you in **Telegram** 
 ## ✨ Key Features
 - 💰 **Multi-exchange support** — **Binance**, **Bybit**, **OKX**, **MEXC**, **WhiteBIT** and **BingX**, plus native
   staking in the **Ready** wallet (STRK and BTC tokens on Starknet).
+- 🪙 **Native staking rates (Wallet)** — what staking with the network itself pays (Keplr, Phantom, Leo…): TIA,
+  FET, SAGA, SOL, APT, SEI, NIBI and SUI, for every coin that has one, wherever you hold it. These are network
+  rates after a typical 10% validator fee, shown as `≈4.70%`; your validator's fee may differ. Portfolios named
+  after a staking wallet (Keplr, Phantom, Leo, Solflare, Leap, Petra, Suiet, Backpack…) are bound to Wallet.
 - ⏳ **Flexible and fixed-term rates** — each rate is shown with its term: `∞` for flexible (redeem any time),
   `7d`, `30d`… for fixed-term products (up to 60 days on Binance and WhiteBIT).
 - 🏆 **Best offer first** — exchanges are sorted by their best rate; the best flexible rate is highlighted in blue,
   the best fixed-term rate in green.
 - 📊 **Portfolio totals** — a banner at the top of every portfolio page with net invested, current value and
   all-time profit/loss across all your portfolios. Net invested = value − profit/loss, so money moved between coins
-  through swaps isn't counted twice (unlike CoinMarketCap's cost basis). Amounts stay hidden when you hide balances
-  in CoinMarketCap.
+  through swaps isn't counted twice (unlike CoinMarketCap's cost basis). **Earn / yr** shows what those portfolios
+  earn a year at the current rates and with every coin at its best rate, in USD and % of the value, with the best
+  moves in its tooltip. Amounts stay hidden when you hide balances in CoinMarketCap.
 - 💼 **Where your coins sit** — the Earn column marks the exchange (or wallet) each coin is held on and estimates
   your yearly income in coins, now vs. at the best rate (`≈ 1.5 FET/yr → 9.8 FET/yr`). "Now" is the best rate of
   the exchange the coin sits on; fixed terms up to 14 days (short promos) don't count as "best".
@@ -32,11 +37,11 @@ It can also watch those rates in the background and message you in **Telegram** 
   the new total or just the change (**±**: `+12`, `-5`), in whole coins. The extension adds a buy or sell for the
   difference at the current price. On the overview, coins held in several portfolios let you pick which one to
   change. Tick 🎁 **Free** for staking rewards or airdrops: the buy is recorded at $0, so invested doesn't grow.
-- 🔔 **Telegram alerts** — a message when the best rate for one of your coins goes up, or a short high-rate promo
-  shows up, plus a weekly summary of the best moves.
+- 🔔 **Telegram alerts** — a message when the best rate for one of your coins goes up, a short high-rate promo
+  shows up or a coin's price jumps, plus a weekly summary of the best moves.
 - 🚀 **Fast** — rates are cached by the extension for 30 minutes, so the portfolio page doesn't wait for every
   exchange each time; older rates show at once and refresh in the background.
-- ⚡ **No login, no API keys** — only public / website endpoints are used.
+- ⚡ **No login, no API keys** — only public / website endpoints and public blockchain nodes are used.
 - 🔒 **Private** — everything runs locally in your browser; nothing is sent anywhere except to the exchanges and,
   if you set it up, your own Telegram bot.
 
@@ -87,9 +92,13 @@ messages you about:
 - 📊 **Weekly summary** — once a week (Monday by default, with the first check after 9:00; can be turned off): what
   your coins earn a year now and at the best rates, how many already sit at the best rate, the top 5 moves by gain
   (`SOL · Bybit 2.10% → OKX 7.00%`) and the promos running. **Send summary now** sends one right away.
+- 🚀 **Price jump** — a coin you hold is up by 30% or more since the previous check (configurable, can be turned
+  off), e.g. `XYZ +42% since the last check (6 h ago)`, with the result of your position (`your position +180%`)
+  when CoinMarketCap knows what it cost. Every held coin counts here, however small; prices come from
+  CoinMarketCap's public quote API.
 
-Coins worth less than $10 in your portfolio (configurable), or no longer held at all, get no alerts, so a coin or two kept just to watch
-the price stays quiet (the summary counts them in the totals, but suggests no moves for them). Portfolios unchecked
+Coins worth less than $10 in your portfolio (configurable), or no longer held at all, get no rate or promo alerts,
+so a coin or two kept just to watch the price stays quiet (the summary counts them in the totals, but suggests no moves for them). Portfolios unchecked
 in the settings are left out. Many alerts at once are split into several messages; whatever couldn't be sent is
 retried on the next check.
 
@@ -112,17 +121,21 @@ npm install
 npm run dev      # Chrome with the extension loaded and hot reload
 npm run build    # production build into .output/chrome-mv3
 npm run lint && npm run compile
+npm test         # unit tests (vitest)
 ```
 
 - `lib/exchanges/` — one module per exchange. Each exports an `Exchange` (`id`, `name`, `logoUrl`, `loadRates()`)
   whose `loadRates()` returns `Map<symbol, Rate[]>`: `{ apr, days }` (`days: 0` = flexible), optionally
   `unbondingDays` (open-ended staking) and `tiers` (rate depends on the amount). To add an exchange, create
   a module, list it in `lib/exchanges/index.ts` and add its API host to `host_permissions` in `wxt.config.ts`.
+- `lib/exchanges/wallet/` — the Wallet exchange: one module per network (Cosmos, Solana, Aptos, Sei, Nibiru, Sui)
+  returning native staking rates after the validator fee (`lib/exchanges/wallet/fee.ts`).
 - `entrypoints/content/` — renders the Earn column, totals banner and Set amount on the CMC portfolio page.
 - `entrypoints/bingx-*.content.ts` + `lib/bingxRefresh.ts` — read BingX rates from its Earn page (the page's own
   request) and refresh them in a background tab.
 - `entrypoints/background.ts` — loads and caches rates for the CMC page (`lib/ratesCache.ts`), proxies requests
-  for the content script and runs the scheduled Telegram checks (`lib/notifier.ts`, `lib/digest.ts`).
+  for the content script and runs the scheduled Telegram checks (`lib/notifier.ts`, `lib/digest.ts`,
+  `lib/jumpCheck.ts`); income totals are in `lib/income.ts`.
 - `entrypoints/options/` — settings page (Preact).
 
 ### Releasing

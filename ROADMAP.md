@@ -1,6 +1,6 @@
 # CMC Helper — roadmap
 
-_Updated: 2026-11-14._
+_Updated: 2026-11-16._
 
 ## Done
 
@@ -20,6 +20,12 @@ _Updated: 2026-11-14._
 - **Rates cache** in the worker: the portfolio page no longer loads every exchange on each visit.
 - **Income in coins** instead of USD.
 
+### 1.2.0
+- **Wallet:** native staking rates from the networks (TIA, FET, SAGA via cosmos.directory; SOL, APT, SEI, NIBI, SUI from public nodes), after a typical 10% validator fee, shown as "≈"; staking-wallet portfolios bound to Wallet; a new exchange starts with a silent alert baseline.
+- **Price jump alerts:** +30% (configurable) since the previous check for any held coin, with the position's P/L % (from CMC's per-portfolio P/L).
+- **Banner:** Earn / yr — income now vs at the best rates, USD and %, best moves in the tooltip; shared with the weekly summary.
+- **"📍 Now on"** shows the current rate on each exchange.
+
 ## Planned
 
 ### 1. Syncing coin amounts with exchanges via an API key (next big feature)
@@ -38,64 +44,19 @@ A read-only exchange key in the settings, bound to a portfolio. The worker signs
 
 The user enters, e.g., "BTC — WhiteBIT 30d, opened 12.11". A day before the term ends, Telegram gets "your plan ends tomorrow, here are the best rates now". The start date will most likely have to be entered manually.
 
-### 3. Native staking rates for wallets
+### 3. More native staking rates
 
-The rate depends on the network, not the wallet: the wallet just delegates to a validator. The unbonding period becomes `days`, i.e. a pill like `21d`.
+Done in 1.2.0 for TIA, FET, SAGA, SOL, APT, SEI, NIBI, SUI (`lib/exchanges/wallet/`). Left:
 
-- **Group 1 — Cosmos (Keplr), one module:** TIA, SEI, DYDX, SAGA, NIBI, FET.
-- **Group 2 — separate modules:** STRK (Ready), SUI, APT, ALEO (Leo Wallet).
-- **Liquid staking via DefiLlama** (`yields.llama.fi/pools`, public, no key). Already checked:
-  - **SOL:** Sanctum Infinity 5.53%, Jupiter 5.03%, Jito 4.96%, BlazeStake 4.69%, Marinade 4.67%;
-  - **STRK:** Endur 6.13%.
+- **ALEO** (Leo Wallet): block rewards ÷ total stake from `api.explorer.provable.com/v1/mainnet` (`/committee/latest`); ≈7–10%, depends on block fees; native delegation from 10,000 ALEO. Hard.
+- **Group 3:** MINA, ROSE, ONE, CFX, ASTR, SUPRA, POL — research sources first.
+- **DYDX:** don't show (rewards in USDC from trading fees, a noisy figure).
+- **Telegram Wallet Earn:** not possible (internal API behind auth); see item 7.
+- **Check** SEI, NIBI, SUI against the numbers Keplr / the Sui wallet show: no keyless explorer API was found to verify them automatically (Mintscan needs a key).
 
-  Needs a token mapping, e.g. JitoSOL → SOL.
-- **Group 3 — later:** MINA, ROSE, ONE, CFX, ASTR, SUPRA, POL.
-- **Not possible:** Telegram Wallet Earn — most likely an internal API behind auth.
+### 4. Delisting alerts (not planned)
 
-#### Source research (2026-11-13)
-
-Every source was checked with plain `curl`, no keys, no auth. All rates below are network rates before the validator fee (usually 5–20%), so show them as "≈X%".
-
-| Coin | Source | Now | Unbonding | Effort |
-|---|---|---|---|---|
-| TIA | `chains.cosmos.directory/celestia` → `.chain.params.calculated_apr` (fraction) | ≈5.2% | 14d | easy |
-| FET | `chains.cosmos.directory/fetchhub` → `calculated_apr` (not `estimated_apr`) | ≈7.1% | 21d | easy |
-| SAGA | `chains.cosmos.directory/saga` → `calculated_apr` | ≈55% (real: only ~5% of supply is staked) | 21d | easy, but show with a note |
-| STRK | Endur: `app.endur.fi/api/stats` → `.apy` (6.13% after Endur's 15% fee); native ≈ `.apy / 0.85` or via RPC `api.zan.top/public/starknet-mainnet` | native ≈7.2%, xSTRK ≈6.1% | 7d | easy (via Endur) |
-| APT | `api.mainnet.aptoslabs.com/v1/accounts/0x1/resource/0x1::staking_config::StakingRewardsConfig` → `rewards_rate.value / 2^64 × 4380` | ≈2.6% (≈2.3% after fee) | up to 14d | easy; Aptos rate-limits anonymous requests per IP |
-| SEI | `rest.cosmos.directory/sei`: `total_mint_amount` from `seichain/mint/v1beta1/minter` ÷ `bonded_tokens` from `cosmos/staking/v1beta1/pool` | ≈4.0% | 21d | medium, not verified against real rewards |
-| NIBI | `rest.cosmos.directory/nibiru`: `epoch_mint_provision × 360 × 0.28125 × 0.98 ÷ bonded` | ≈18% | 21d | medium, not verified |
-| SUI | GraphQL `graphql.mainnet.sui.io`: previous epoch rewards × 365 ÷ `total_stake` | ≈1.3% | ~1d | medium |
-| ALEO | `api.explorer.provable.com/v1/mainnet`: block rewards ÷ total stake from `/committee/latest` | ≈7–10% (depends on block fees) | ~17 min | hard; native delegation from 10,000 ALEO |
-| DYDX | no ready source; rewards are paid in USDC from trading fees | ≈2% in USDC, a noisy figure | 21d | ❌ don't show |
-
-**Notes:**
-- `chains.cosmos.directory/` returns all Cosmos chains in one request (~2 MB). It's a free community service by ECO Stake, no guarantees. `calculated_apr` is null for SEI, DYDX and NIBI.
-- **SEI** has no inflation: it mints a fixed amount per year, so the standard formula doesn't apply.
-- **NIBI:** stakers get only 28.125% of inflation, so "inflation ÷ staked" overstates the rate about threefold.
-- **STRK:** the 0.75 factor in the native formula (25% of rewards go to BTC stakers) was assumed, not read from the chain, but the result matches Endur exactly. Simpler to take Endur `.apy / 0.85`.
-- **SUI:** the rate slowly declines as the staking subsidy shrinks. The old JSON-RPC is off; only GraphQL is left.
-- **APT:** use `StakingRewardsConfig`, not the deprecated `StakingConfig.rewards_rate`. The rate is already at its floor.
-- **DefiLlama** (liquid staking with TVL > $5M): for these coins only Endur (xSTRK, 6.13%). SUI has lending only, not staking; APT — Amnis 2.36% with TVL $2.4M; TIA — nothing.
-
-**Order:**
-1. One "Cosmos" module: TIA, FET, SAGA via `calculated_apr` in one request.
-2. STRK via Endur, APT via `StakingRewardsConfig`.
-3. Modules with their own formulas: SEI, NIBI, SUI.
-4. ALEO if needed.
-
-Don't show DYDX.
-
-### 4. Alerts for "lottery" coins
-
-A portfolio of small "lottery" positions held until altseason. No point analysing them daily, but two things matter:
-
-- **Delisting.** A Telegram alert when an exchange announces a delisting of a portfolio coin: "⚠️ Bybit delists XYZ on 25.11 — you hold XYZ in the Bybit portfolio". The goal is to sell or withdraw while it's still possible.
-  - Sources: Bybit and OKX probably have public announcement APIs with a delisting category; Binance publishes them via an internal website endpoint. **Check live before building.**
-  - Coins already delisted: check whether they can still be withdrawn to a wallet.
-- **Sharp rise.** An alert when a lottery coin pumps, e.g. +100% in a day or ×5 from the entry price, so you don't miss the moment and take some profit by a rule decided in advance (e.g. take out what you put in).
-
-Both use the portfolio → exchange binding (done in 1.0.0).
+Price jumps shipped in 1.2.0. Delisting alerts are dropped for now: exchanges already announce delistings by email and in their apps.
 
 ### 5. Ratio trading signals
 
@@ -173,9 +134,7 @@ For wallets and services whose rates can't be fetched (Walt / Telegram Wallet, a
 - **New exchanges:** Gate, KuCoin, Bitget — first check for public endpoints.
 - **Rate history:** rates are checked every few hours anyway, so they could be stored and drawn as a small chart next to the exchange.
 - **"Better rate than yours" alerts:** a separate alert when a coin sits at a noticeably worse rate than the best one (the weekly summary covers this for now).
-- **Portfolio-wide income in the banner** next to Invested / Value / P/L.
 
 ## Tech debt
 
-- release-it didn't attach the zip to the v0.0.4 release — find out from the next release's output.
 - Automatic release notes from commits (`releaseNotes` in `.release-it.json`).
