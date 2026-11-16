@@ -10,6 +10,7 @@ import {
     type BestRate, type CheckStatus, type CoinSnapshot
 } from './storage';
 import { refreshBingx } from './bingxRefresh';
+import { findNewExchanges, withoutExchanges } from './newExchanges';
 import { isDigestDue, sendDigest, usd } from './digest';
 import { escapeHtml, sendMessage } from './telegram';
 
@@ -219,13 +220,18 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
     const next: Record<string, CoinSnapshot> = {};
     const alerts: Alert[] = [];
 
+    const placesOfCoin = (symbol: string) => withoutExcluded(holdings[symbol] ?? [], settings.excludedPortfolios);
+    const balanceOf = (places: ReturnType<typeof placesOfCoin>) => (
+        places.length > 0 && places.every((place) => place.balance !== undefined)
+            ? places.reduce((sum, place) => sum + (place.balance ?? 0), 0)
+            : null
+    );
+    const snapshots: Record<string, CoinSnapshot> = {};
+
     symbols.forEach((symbol) => {
         const old = previous[symbol] ?? {};
         const snapshot: CoinSnapshot = {};
-        const places = withoutExcluded(holdings[symbol] ?? [], settings.excludedPortfolios);
-        const balance = places.length > 0 && places.every((place) => place.balance !== undefined)
-            ? places.reduce((sum, place) => sum + (place.balance ?? 0), 0)
-            : null;
+        const balance = balanceOf(placesOfCoin(symbol));
 
         (byCoin.get(symbol) ?? []).forEach(({ exchange, rates }) => {
             // Short promos (MEXC 2 days at 600%) aren't rates you can keep coins at: they get their own alerts.
@@ -246,6 +252,18 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
                 snapshot[id] = old[id];
             }
         });
+
+        snapshots[symbol] = snapshot;
+    });
+
+    // An exchange added in an update starts with a silent baseline: no burst of "new best rate" alerts for it.
+    const newExchanges = findNewExchanges(previous, snapshots);
+
+    symbols.forEach((symbol) => {
+        const old = previous[symbol] ?? {};
+        const snapshot = snapshots[symbol];
+        const places = placesOfCoin(symbol);
+        const balance = balanceOf(places);
 
         // Coins kept just to watch the price (a coin or two), or not held at all any more (still in the list of
         // seen coins, but in no portfolio): baselines move on, but no alerts. Before CMC has reported any positions
@@ -275,7 +293,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
             }
         });
 
-        const best = bestOf(snapshot);
+        const best = bestOf(withoutExchanges(snapshot, newExchanges));
         const previousBest = bestOf(old);
 
         // New coins only get a baseline; alerts are for increases.
@@ -290,7 +308,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
             }
         }
 
-        if (best) {
+        if (bestOf(snapshot)) {
             next[symbol] = snapshot;
         }
     });
