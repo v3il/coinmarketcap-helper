@@ -236,7 +236,7 @@ export function App() {
                                 {EXCHANGES.map((exchange) => (
                                     <option key={exchange.id} value={exchange.id}>{exchange.name}</option>
                                 ))}
-                                <option value={NOT_AN_EXCHANGE}>Wallet / other</option>
+                                <option value={NOT_AN_EXCHANGE}>Other (no rate)</option>
                             </select>,
                             <input
                                 key={`${name}-totals`}

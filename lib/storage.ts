@@ -22,7 +22,7 @@ export interface Settings {
     bingxAutoRefresh: boolean;
     /** CMC portfolio names left out of the totals banner (e.g. savings), matched case-insensitively. */
     excludedPortfolios: string[];
-    /** CMC portfolio name -> exchange id or 'none' (wallet / other). Unset portfolios are guessed by name. */
+    /** CMC portfolio name -> exchange id or 'none' (other, no rate). Unset portfolios are guessed by name. */
     portfolioExchanges: Record<string, string>;
 }
 

@@ -28,12 +28,26 @@ export function withoutExcluded<T extends { portfolio: string }>(holdings: T[], 
 
 const normalize = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-/** Best guess from the portfolio name ("WhiteBit", "Binance Earn" …); null for wallets and anything else. */
+/** Wallets that stake natively with the network: their coins earn the Wallet (network staking) rates. */
+const STAKING_WALLETS = ['keplr', 'phantom', 'leo', 'solflare', 'leap', 'petra', 'suiet', 'suiwallet', 'backpack'];
+
+/**
+ * Best guess from the portfolio name ("WhiteBit", "Binance Earn", "Keplr" …); null for anything else.
+ * Wallet is matched only by the known wallet names: "Telegram Wallet" has no network staking.
+ */
 export function guessExchange(portfolio: string): Exchange | null {
     const name = normalize(portfolio);
-    const matches = (exchange: Exchange) => name.includes(normalize(exchange.id))
-        || name.includes(normalize(exchange.name));
-    return EXCHANGES.find(matches) ?? null;
+    const matches = (exchange: Exchange) => exchange.id !== 'wallet'
+        && (name.includes(normalize(exchange.id)) || name.includes(normalize(exchange.name)));
+    const exchange = EXCHANGES.find(matches);
+
+    if (exchange) {
+        return exchange;
+    }
+
+    return STAKING_WALLETS.some((wallet) => name.includes(wallet))
+        ? EXCHANGES.find(({ id }) => id === 'wallet') ?? null
+        : null;
 }
 
 export type ExchangeResolver = (portfolio: string) => Exchange | null;
