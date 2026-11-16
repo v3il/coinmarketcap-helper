@@ -29,6 +29,7 @@ export default defineConfig({
             'https://cloud.argent-api.com/*',
             'https://chains.cosmos.directory/*',
             'https://api.mainnet-beta.solana.com/*',
+            'https://api.mainnet.aptoslabs.com/*',
             'https://api.telegram.org/*'
         ]
     }
