@@ -27,8 +27,8 @@ export const withoutExchanges = (snapshot: CoinSnapshot, ids: Set<string>): Coin
 );
 
 /**
- * Exchanges made of several sources (Wallet: one per network) can answer in part. A coin whose source didn't answer
- * keeps its last rate from them, so the outage doesn't lower its baseline (and fake a "new best" once it's back).
+ * Exchanges made of several sources (Native staking: one per network) can answer in part. A coin whose source
+ * didn't answer keeps its last rate from them, so the outage doesn't lower its baseline (and fake a "new best" once it's back).
  */
 export const keepMissing = (snapshot: CoinSnapshot, old: CoinSnapshot, ids: Set<string>): CoinSnapshot => ({
     ...Object.fromEntries(Object.entries(old).filter(([id]) => ids.has(id) && !snapshot[id])),

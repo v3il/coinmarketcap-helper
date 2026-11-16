@@ -43,9 +43,9 @@ describe('buildDigest', () => {
     });
 });
 
-describe('buildDigest with Wallet rates', () => {
+describe('buildDigest with native staking rates', () => {
     it('marks the approximate target rate with ≈', () => {
-        const wallet = exchange('wallet', 'Wallet');
+        const wallet = exchange('wallet', 'Native staking');
         const rates: RatesByCoin = new Map([
             ['tia', [{ exchange: bybit, rates: [{ apr: 1, days: 0 }] },
                 { exchange: wallet, rates: [{ apr: 4.7, days: 0, approximate: true }] }]]
@@ -55,6 +55,6 @@ describe('buildDigest with Wallet rates', () => {
             holdings: { tia: [{ portfolio: 'Bybit', value: 100, balance: 10 }] },
             settings: { ...DEFAULT_SETTINGS, portfolioExchanges: { Bybit: 'bybit' } }
         });
-        expect(text).toContain('<b>Wallet ≈4.70%</b>');
+        expect(text).toContain('<b>Native staking ≈4.70%</b>');
     });
 });

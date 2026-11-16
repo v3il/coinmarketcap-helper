@@ -28,7 +28,7 @@ export function withoutExcluded<T extends { portfolio: string }>(holdings: T[], 
 
 const normalize = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-/** Wallets that stake natively with the network: their coins earn the Wallet (network staking) rates. */
+/** Wallets that stake natively with the network: their coins earn the Native staking rates. */
 const STAKING_WALLETS = ['keplr', 'phantom', 'leo', 'solflare', 'leap', 'petra', 'suiet', 'suiwallet', 'backpack'];
 
 /**

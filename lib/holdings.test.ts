@@ -5,7 +5,7 @@ const guess = (name: string) => guessExchange(name)?.id ?? null;
 
 describe('guessExchange', () => {
     it.each(['Keplr', 'phantom', 'Leo Wallet', 'Solflare', 'Leap', 'Petra', 'Suiet', 'Sui Wallet', 'Backpack'])(
-        'binds the %s wallet to Wallet staking rates',
+        'binds the %s wallet to native staking rates',
         (name) => { expect(guess(name)).toBe('wallet'); }
     );
 

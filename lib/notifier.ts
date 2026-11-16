@@ -36,7 +36,7 @@ interface Alert {
     positions: string[];
 }
 
-/** Exchanges whose rates come from several sources that can fail one by one (Wallet: one per network). */
+/** Exchanges whose rates come from several sources that can fail one by one (Native staking: one per network). */
 const PARTIAL_EXCHANGES = new Set(['wallet']);
 
 /** On equal APR, the shorter term is better. */

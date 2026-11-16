@@ -104,7 +104,7 @@ export function formatIncomeStat(
 
 const MAX_TIP_MOVES = 3;
 
-/** The banner stat's tooltip: "TIA: Bybit → Wallet, +4.1 pp" for the top moves. */
+/** The banner stat's tooltip: "TIA: Bybit → Native staking, +4.1 pp" for the top moves. */
 export function formatMovesTip(moves: Move[]): string {
     if (moves.length === 0) {
         return 'Every coin is already at its best rate';

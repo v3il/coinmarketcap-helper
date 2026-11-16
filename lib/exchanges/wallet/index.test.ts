@@ -10,6 +10,12 @@ const use = (...modules: NetworkModule[]) => WALLET_MODULES.splice(0, WALLET_MOD
 
 afterEach(() => { use(...original); });
 
+describe('wallet', () => {
+    it('is shown as Native staking (the id stays "wallet" for saved settings)', () => {
+        expect([wallet.id, wallet.name]).toEqual(['wallet', 'Native staking']);
+    });
+});
+
 describe('wallet.loadRates', () => {
     it('keeps the rates of the networks that answered when one is down', async () => {
         use(ok, down);

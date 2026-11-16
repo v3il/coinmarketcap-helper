@@ -14,10 +14,10 @@ It can also watch those rates in the background and message you in **Telegram** 
 ## ✨ Key Features
 - 💰 **Multi-exchange support** — **Binance**, **Bybit**, **OKX**, **MEXC**, **WhiteBIT** and **BingX**, plus native
   staking in the **Ready** wallet (STRK and BTC tokens on Starknet).
-- 🪙 **Native staking rates (Wallet)** — what staking with the network itself pays (Keplr, Phantom, Leo…): TIA,
+- 🪙 **Native staking** — what staking with the network itself pays (Keplr, Phantom, Leo…): TIA,
   FET, SAGA, SOL, APT, SEI, NIBI and SUI, for every coin that has one, wherever you hold it. These are network
   rates after a typical 10% validator fee, shown as `≈4.70%`; your validator's fee may differ. Portfolios named
-  after a staking wallet (Keplr, Phantom, Leo, Solflare, Leap, Petra, Suiet, Backpack…) are bound to Wallet.
+  after a staking wallet (Keplr, Phantom, Leo, Solflare, Leap, Petra, Suiet, Backpack…) are bound to Native staking.
 - ⏳ **Flexible and fixed-term rates** — each rate is shown with its term: `∞` for flexible (redeem any time),
   `7d`, `30d`… for fixed-term products (up to 60 days on Binance and WhiteBIT).
 - 🏆 **Best offer first** — exchanges are sorted by their best rate; the best flexible rate is highlighted in blue,
@@ -128,7 +128,7 @@ npm test         # unit tests (vitest)
   whose `loadRates()` returns `Map<symbol, Rate[]>`: `{ apr, days }` (`days: 0` = flexible), optionally
   `unbondingDays` (open-ended staking) and `tiers` (rate depends on the amount). To add an exchange, create
   a module, list it in `lib/exchanges/index.ts` and add its API host to `host_permissions` in `wxt.config.ts`.
-- `lib/exchanges/wallet/` — the Wallet exchange: one module per network (Cosmos, Solana, Aptos, Sei, Nibiru, Sui)
+- `lib/exchanges/wallet/` — the Native staking exchange (id `wallet`): one module per network (Cosmos, Solana, Aptos, Sei, Nibiru, Sui)
   returning native staking rates after the validator fee (`lib/exchanges/wallet/fee.ts`).
 - `entrypoints/content/` — renders the Earn column, totals banner and Set amount on the CMC portfolio page.
 - `entrypoints/bingx-*.content.ts` + `lib/bingxRefresh.ts` — read BingX rates from its Earn page (the page's own

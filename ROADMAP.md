@@ -21,7 +21,7 @@ _Updated: 2026-11-16._
 - **Income in coins** instead of USD.
 
 ### 1.2.0
-- **Wallet:** native staking rates from the networks (TIA, FET, SAGA via cosmos.directory; SOL, APT, SEI, NIBI, SUI from public nodes), after a typical 10% validator fee, shown as "≈"; staking-wallet portfolios bound to Wallet; a new exchange starts with a silent alert baseline.
+- **Native staking** (exchange id `wallet`): rates from the networks (TIA, FET, SAGA via cosmos.directory; SOL, APT, SEI, NIBI, SUI from public nodes), after a typical 10% validator fee, shown as "≈"; staking-wallet portfolios bound to it; a new exchange starts with a silent alert baseline.
 - **Price jump alerts:** +30% (configurable) since the previous check for any held coin, with the position's P/L % (from CMC's per-portfolio P/L).
 - **Banner:** Earn / yr — income now vs at the best rates, USD and %, best moves in the tooltip; shared with the weekly summary.
 - **"📍 Now on"** shows the current rate on each exchange.

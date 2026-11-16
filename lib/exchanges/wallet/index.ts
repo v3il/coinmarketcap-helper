@@ -22,7 +22,7 @@ const LOGO = `data:image/svg+xml,${encodeURIComponent(LOGO_SVG)}`;
 
 export const wallet: Exchange = {
     id: 'wallet',
-    name: 'Wallet',
+    name: 'Native staking',
     logoUrl: LOGO,
 
     async loadRates() {
@@ -31,7 +31,7 @@ export const wallet: Exchange = {
 
         results.forEach((result, i) => {
             if (result.status === 'rejected') {
-                console.warn(`[cmc-helper] Wallet: ${WALLET_MODULES[i].name} rates failed`, result.reason);
+                console.warn(`[cmc-helper] Native staking: ${WALLET_MODULES[i].name} rates failed`, result.reason);
             }
         });
 
