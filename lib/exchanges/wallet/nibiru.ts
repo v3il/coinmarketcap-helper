@@ -1,5 +1,5 @@
 import { fetchJson } from '@/utils/request';
-import { netOfFee } from './fee';
+import { netOfFee, stakingRate } from './fee';
 import type { NetworkModule } from './types';
 
 // Nibiru mints a provision every epoch (a day) and gives stakers only part of it (28.125% now), so
@@ -43,6 +43,7 @@ export const nibiru: NetworkModule = {
             communityTax: Number(distribution.params.community_tax)
         }, Number(pool.bonded_tokens));
 
-        return apr > 0 ? [['NIBI', { apr, days: 0, unbondingDays: UNBONDING_DAYS, approximate: true }]] : [];
+        const where = { network: 'Nibiru', wallets: ['Keplr', 'Leap'] };
+        return apr > 0 ? [['NIBI', stakingRate(apr, UNBONDING_DAYS, where)]] : [];
     }
 };

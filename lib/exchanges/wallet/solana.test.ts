@@ -13,6 +13,8 @@ describe('solanaApr', () => {
 
 describe('solanaRate', () => {
     it('is flexible with a ~3-day withdrawal and approximate', () => {
-        expect(solanaRate(5.4)).toEqual({ apr: 5.4, days: 0, unbondingDays: 3, approximate: true });
+        expect(solanaRate(5.4)).toEqual({
+            apr: 5.4, days: 0, unbondingDays: 3, approximate: true, note: 'Native staking on Solana: Phantom, Solflare'
+        });
     });
 });

@@ -14,8 +14,13 @@ const chains = {
 const bySymbol = () => new Map(parseCosmosChains(chains));
 
 describe('parseCosmosChains', () => {
+    it('says which network and wallets the rate is for', () => {
+        expect(bySymbol().get('TIA')?.note).toBe('Native staking on Celestia: Keplr, Leap');
+        expect(bySymbol().get('SAGA')?.note).toMatch(/^Native staking on Saga: Keplr, Leap\n/);
+    });
+
     it('gives TIA its network rate after the validator fee', () => {
-        expect(bySymbol().get('TIA')).toEqual({ apr: 5.4, days: 0, unbondingDays: 14, approximate: true });
+        expect(bySymbol().get('TIA')).toMatchObject({ apr: 5.4, days: 0, unbondingDays: 14, approximate: true });
     });
 
     it('falls back to a known unbonding period when the chain has none', () => {

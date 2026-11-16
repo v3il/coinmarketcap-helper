@@ -1,5 +1,5 @@
 import { fetchJson } from '@/utils/request';
-import { netOfFee } from './fee';
+import { netOfFee, stakingRate } from './fee';
 import type { NetworkModule } from './types';
 
 // SEI has no inflation: it mints a fixed amount per yearly period (all of it to stakers, no community tax).
@@ -23,6 +23,7 @@ export const sei: NetworkModule = {
         const perYear = (Number(minter.total_mint_amount) * 365) / (days > 0 ? days : 365);
         const apr = seiApr(perYear, Number(pool.bonded_tokens));
 
-        return apr > 0 ? [['SEI', { apr, days: 0, unbondingDays: UNBONDING_DAYS, approximate: true }]] : [];
+        const where = { network: 'Sei', wallets: ['Keplr', 'Compass'] };
+        return apr > 0 ? [['SEI', stakingRate(apr, UNBONDING_DAYS, where)]] : [];
     }
 };

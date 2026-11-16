@@ -1,6 +1,6 @@
 import { fetchJson } from '@/utils/request';
 import type { Rate } from '../common';
-import { netOfFee } from './fee';
+import { netOfFee, stakingRate } from './fee';
 import type { NetworkModule } from './types';
 
 // cosmos.directory (a free community service by ECO Stake) returns every Cosmos chain in one request (~2 MB),
@@ -9,11 +9,14 @@ import type { NetworkModule } from './types';
 const URL = 'https://chains.cosmos.directory/';
 const SECONDS_PER_DAY = 86400;
 
-const CHAINS: Record<string, { symbol: string; unbondingDays: number; note?: string }> = {
-    celestia: { symbol: 'TIA', unbondingDays: 14 },
-    fetchhub: { symbol: 'FET', unbondingDays: 21 },
+const COSMOS_WALLETS = ['Keplr', 'Leap'];
+
+const CHAINS: Record<string, { symbol: string; network: string; unbondingDays: number; note?: string }> = {
+    celestia: { symbol: 'TIA', network: 'Celestia', unbondingDays: 14 },
+    fetchhub: { symbol: 'FET', network: 'Fetch.ai', unbondingDays: 21 },
     saga: {
         symbol: 'SAGA',
+        network: 'Saga',
         unbondingDays: 21,
         note: 'So high because little of the supply is staked: new coins are shared among few stakers'
     }
@@ -39,9 +42,9 @@ export function parseCosmosChains(json: unknown): [string, Rate][] {
             ? Math.round(params.unbonding_time / SECONDS_PER_DAY)
             : chain.unbondingDays;
 
-        return [[chain.symbol, {
-            apr: netOfFee(gross), days: 0, unbondingDays, approximate: true, ...(chain.note ? { note: chain.note } : {})
-        }]];
+        return [[chain.symbol, stakingRate(netOfFee(gross), unbondingDays, {
+            network: chain.network, wallets: COSMOS_WALLETS, note: chain.note
+        })]];
     });
 }
 

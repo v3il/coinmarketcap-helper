@@ -10,7 +10,7 @@ import {
     type BestRate, type CheckStatus, type CoinSnapshot
 } from './storage';
 import { refreshBingx } from './bingxRefresh';
-import { findNewExchanges, withoutExchanges } from './newExchanges';
+import { findNewExchanges, keepMissing, withoutExchanges } from './newExchanges';
 import { isDigestDue, sendDigest, usd } from './digest';
 import { runJumpCheck } from './jumpCheck';
 import { escapeHtml, sendMessage } from './telegram';
@@ -36,6 +36,9 @@ interface Alert {
     positions: string[];
 }
 
+/** Exchanges whose rates come from several sources that can fail one by one (Wallet: one per network). */
+const PARTIAL_EXCHANGES = new Set(['wallet']);
+
 /** On equal APR, the shorter term is better. */
 const isBetter = (a: Rate, b: Rate | null) => !b || a.apr > b.apr || (a.apr === b.apr && a.days < b.days);
 
@@ -51,8 +54,10 @@ const term = (days: number, unbondingDays?: number) => {
 };
 
 /** "7.37% · Binance · flexible", "6.50% · Ready · flexible, 7-day withdrawal" */
-const describe = ({ apr, days, unbondingDays, exchangeName }: BestRate) => (
-    `${apr.toFixed(2)}% · ${escapeHtml(exchangeName)} · ${term(days, unbondingDays)}`
+export const describeRate = ({
+    apr, days, unbondingDays, approximate, exchangeName
+}: BestRate) => (
+    `${approximate ? '≈' : ''}${apr.toFixed(2)}% · ${escapeHtml(exchangeName)} · ${term(days, unbondingDays)}`
 );
 
 /**
@@ -99,8 +104,8 @@ function describePositions(
  */
 const formatAlert = ({ symbol, best, previous, heldOn, positions }: Alert) => [
     `🪙 <b>${escapeHtml(symbol.toUpperCase())}</b>`,
-    `🔥 <b>${describe(best)}</b>`,
-    `↗️ +${(best.apr - previous.apr).toFixed(2)} pp <i>(was ${describe(previous)})</i>`,
+    `🔥 <b>${describeRate(best)}</b>`,
+    `↗️ +${(best.apr - previous.apr).toFixed(2)} pp <i>(was ${describeRate(previous)})</i>`,
     ...(heldOn.length > 0 ? [`📍 Now on: ${heldOn.map(escapeHtml).join(', ')}`] : []),
     ...positions
 ].join('\n');
@@ -254,7 +259,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
             }
         });
 
-        snapshots[symbol] = snapshot;
+        snapshots[symbol] = keepMissing(snapshot, old, PARTIAL_EXCHANGES);
     });
 
     // An exchange added in an update starts with a silent baseline: no burst of "new best rate" alerts for it.
@@ -361,6 +366,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
 
     if (jumpCheck.ok) {
         message += jumpCheck.jumps > 0 ? `, price jumps: ${jumpCheck.jumps}` : '';
+        message += jumpCheck.warning ? ` (${jumpCheck.warning})` : '';
     } else if (ok) {
         ok = false;
         message = jumpCheck.error;

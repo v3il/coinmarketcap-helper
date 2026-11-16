@@ -78,6 +78,8 @@ export interface IncomeRate {
     apr: number;
     days: number;
     exchange: Exchange;
+    /** A network staking rate: an estimate after a typical validator fee. */
+    approximate?: boolean;
 }
 
 /**
@@ -91,7 +93,7 @@ export function bestIncomeRate(list: ExchangeRates[] | undefined, amount?: numbe
         const apr = effectiveApr(rate, amount);
 
         if (isRealisticRate(rate) && (!best || apr > best.apr)) {
-            best = { apr, days: rate.days, exchange };
+            best = { apr, days: rate.days, exchange, ...(rate.approximate ? { approximate: true } : {}) };
         }
     }));
 

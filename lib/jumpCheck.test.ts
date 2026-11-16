@@ -25,6 +25,15 @@ beforeEach(async () => {
 });
 
 describe('runJumpCheck', () => {
+    it('keeps the baseline of a held coin it has no CMC id for', async () => {
+        await coinIdsItem.setValue({ xyz: 1, abc: 2 });
+        await priceBaselinesItem.setValue({ xyz: { price: 0.01, at: 0 }, nid: { price: 4, at: 0 } });
+
+        await runJumpCheck(settings, { ...holdings, nid: [{ portfolio: 'Trash', value: 1, balance: 1 }] }, 1000);
+
+        expect((await priceBaselinesItem.getValue()).nid).toEqual({ price: 4, at: 0 });
+    });
+
     it('alerts on a jump, with the position result, and moves the baselines', async () => {
         const result = await runJumpCheck(settings, holdings, 1000);
 
@@ -54,10 +63,12 @@ describe('runJumpCheck', () => {
         expect(baselines.abc).toEqual({ price: 2.1, at: 1000 });
     });
 
-    it('changes nothing when prices fail to load', async () => {
+    it('changes nothing when prices fail to load, and only warns (the check itself is fine)', async () => {
         vi.mocked(fetchPrices).mockRejectedValue(new Error('429'));
 
-        expect((await runJumpCheck(settings, holdings, 1000)).ok).toBe(false);
+        const result = await runJumpCheck(settings, holdings, 1000);
+        expect(result.ok).toBe(true);
+        expect(result.ok && result.warning).toContain('429');
         expect((await priceBaselinesItem.getValue()).xyz).toEqual({ price: 0.01, at: 0 });
         expect(sendMessage).not.toHaveBeenCalled();
     });

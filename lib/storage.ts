@@ -55,6 +55,8 @@ export interface BestRate {
     apr: number;
     days: number;
     unbondingDays?: number;
+    /** A network staking rate: an estimate after a typical validator fee. */
+    approximate?: boolean;
     exchangeId: string;
     exchangeName: string;
 }

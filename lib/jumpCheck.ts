@@ -6,7 +6,10 @@ import { sendMessage } from './telegram';
 
 type Position = { portfolio: string; value: number; balance?: number; cost?: number };
 
-export type JumpCheckResult = { ok: true; jumps: number } | { ok: false; jumps: number; error: string };
+/** `ok: false` only when the jump message couldn't be sent; a price API failure is just a warning. */
+export type JumpCheckResult =
+    | { ok: true; jumps: number; warning?: string }
+    | { ok: false; jumps: number; error: string };
 
 /**
  * Compares held coins' prices with the previous check and sends one Telegram message for the jumps.
@@ -19,17 +22,18 @@ export async function runJumpCheck(
     now = Date.now()
 ): Promise<JumpCheckResult> {
     const ids = await coinIdsItem.getValue();
-    const held = Object.entries(holdings)
+    const allHeld = Object.entries(holdings)
         .map(([symbol, positions]) => [symbol, withoutExcluded(positions, settings.excludedPortfolios)
             .filter(({ value, balance }) => value > 0 || (balance ?? 0) > 0)] as const)
-        .filter(([symbol, positions]) => positions.length > 0 && ids[symbol] !== undefined);
+        .filter(([, positions]) => positions.length > 0);
+    const held = allHeld.filter(([symbol]) => ids[symbol] !== undefined);
 
     let byId: Map<number, number>;
 
     try {
         byId = await fetchPrices(held.map(([symbol]) => ids[symbol]));
     } catch (error) {
-        return { ok: false, jumps: 0, error: `Prices failed: ${(error as Error).message}` };
+        return { ok: true, jumps: 0, warning: `prices failed: ${(error as Error).message}` };
     }
 
     const prices = new Map(held.flatMap(([symbol]) => {
@@ -39,8 +43,8 @@ export async function runJumpCheck(
     const previous = await priceBaselinesItem.getValue();
     const next: Record<string, PriceBaseline> = {};
 
-    // Coins no longer held drop out; coins without a price this time keep their old baseline.
-    held.forEach(([symbol]) => {
+    // Coins no longer held drop out; coins without a price (or CMC id) this time keep their old baseline.
+    allHeld.forEach(([symbol]) => {
         const price = prices.get(symbol);
 
         if (price !== undefined) {

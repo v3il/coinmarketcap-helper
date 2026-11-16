@@ -92,7 +92,9 @@ export function buildDigest({ rates, holdings, settings }: DigestInput): string 
             const coins = gainCoins === null ? '' : ` (+${formatCoins(gainCoins)} ${escapeHtml(symbol)})`;
             lines.push(
                 `🪙 <b>${escapeHtml(symbol)}</b> · ${escapeHtml(place)} ${nowApr.toFixed(2)}%`
-                    + ` → <b>${escapeHtml(target.exchange.name)} ${target.apr.toFixed(2)}%</b> · ${term(target.days)}`,
+                    + ` → <b>${escapeHtml(target.exchange.name)} ${target.approximate ? '≈' : ''}`
+                    + `${target.apr.toFixed(2)}%</b>`
+                    + ` · ${term(target.days)}`,
                 `   +${usd(gainUsd)}/yr${coins}`
             );
         });

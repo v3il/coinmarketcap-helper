@@ -1,6 +1,6 @@
 import { fetchJson } from '@/utils/request';
 import type { Rate } from '../common';
-import { netOfFee } from './fee';
+import { netOfFee, stakingRate } from './fee';
 import type { NetworkModule } from './types';
 
 // Native SOL staking from the public Solana RPC: new coins (validator inflation × total supply) are shared among
@@ -14,7 +14,9 @@ export function solanaApr(inflationValidator: number, totalSupply: number, activ
     return activeStake > 0 ? netOfFee((inflationValidator * totalSupply) / activeStake) : 0;
 }
 
-export const solanaRate = (apr: number): Rate => ({ apr, days: 0, unbondingDays: UNBONDING_DAYS, approximate: true });
+export const solanaRate = (apr: number): Rate => stakingRate(apr, UNBONDING_DAYS, {
+    network: 'Solana', wallets: ['Phantom', 'Solflare']
+});
 
 async function rpc<T>(method: string, params?: unknown[]): Promise<T> {
     const response = await fetchJson<{ result?: T; error?: { message: string } }>(RPC, {

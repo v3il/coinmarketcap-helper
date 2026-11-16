@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findNewExchanges, withoutExchanges } from './newExchanges';
+import { findNewExchanges, keepMissing, withoutExchanges } from './newExchanges';
 import type { BestRate, CoinSnapshot } from './storage';
 
 const rate = (exchangeId: string, apr = 5): BestRate => ({ apr, days: 0, exchangeId, exchangeName: exchangeId });
@@ -23,5 +23,18 @@ describe('findNewExchanges', () => {
 describe('withoutExchanges', () => {
     it('drops only the listed exchanges', () => {
         expect(Object.keys(withoutExchanges(snap('bybit', 'wallet'), new Set(['wallet'])))).toEqual(['bybit']);
+    });
+});
+
+describe('keepMissing', () => {
+    it('keeps the last rate of a coin from an exchange that answered only in part (one network down)', () => {
+        const kept = keepMissing({ tia: snap('bybit') }.tia, { tia: snap('bybit', 'wallet') }.tia, new Set(['wallet']));
+        expect(Object.keys(kept).sort()).toEqual(['bybit', 'wallet']);
+    });
+
+    it('leaves other exchanges and fresh rates alone', () => {
+        const fresh = { wallet: rate('wallet', 9) };
+        expect(keepMissing(fresh, { wallet: rate('wallet', 5), okx: rate('okx') }, new Set(['wallet'])))
+            .toEqual(fresh);
     });
 });

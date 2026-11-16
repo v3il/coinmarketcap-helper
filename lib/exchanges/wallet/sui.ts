@@ -1,5 +1,5 @@
 import { fetchJson } from '@/utils/request';
-import { netOfFee } from './fee';
+import { netOfFee, stakingRate } from './fee';
 import type { NetworkModule } from './types';
 
 // Sui pays rewards (stake subsidy + gas fees) every daily epoch. The old JSON-RPC is off; GraphQL gives the last
@@ -33,6 +33,7 @@ export const sui: NetworkModule = {
             Number(epoch.systemState.json.validators.total_stake)
         );
 
-        return apr > 0 ? [['SUI', { apr, days: 0, unbondingDays: UNBONDING_DAYS, approximate: true }]] : [];
+        const where = { network: 'Sui', wallets: ['Sui Wallet', 'Suiet', 'Phantom'] };
+        return apr > 0 ? [['SUI', stakingRate(apr, UNBONDING_DAYS, where)]] : [];
     }
 };

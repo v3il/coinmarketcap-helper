@@ -1,5 +1,5 @@
 import { fetchJson } from '@/utils/request';
-import { netOfFee } from './fee';
+import { netOfFee, stakingRate } from './fee';
 import type { NetworkModule } from './types';
 
 // Aptos pays staking rewards every 2-hour epoch at a rate stored on chain as a 64-bit fixed-point fraction.
@@ -21,6 +21,7 @@ export const aptos: NetworkModule = {
         const { data } = await fetchJson<{ data: { rewards_rate: { value: string } } }>(URL);
         const apr = aptosApr(data.rewards_rate.value);
 
-        return apr > 0 ? [['APT', { apr, days: 0, unbondingDays: UNBONDING_DAYS, approximate: true }]] : [];
+        const where = { network: 'Aptos', wallets: ['Petra'] };
+        return apr > 0 ? [['APT', stakingRate(apr, UNBONDING_DAYS, where)]] : [];
     }
 };
