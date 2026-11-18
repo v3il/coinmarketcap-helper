@@ -56,20 +56,23 @@ export function renderPortfolioIcons({ enabled, iconOf, order }: PortfolioIconsO
         }
     });
 
-    if (!order) {
+    document.querySelectorAll('table tbody tr').forEach((row) => {
+        const symbol = row.querySelector('.symbol-name')?.textContent?.trim().toLowerCase();
+        const names = symbol ? order?.get(symbol) : undefined;
+        renderRowIcons([...row.querySelectorAll<HTMLImageElement>(AVATAR_SELECTOR)], names, iconOf);
+    });
+}
+
+/** One table row's avatar stack: logos in the data's order, or CMC's avatars back when the row doesn't match it. */
+export function renderRowIcons(
+    imgs: HTMLImageElement[],
+    names: string[] | undefined,
+    iconOf: (name: string) => string
+) {
+    if (!names || names.length !== imgs.length) {
+        imgs.filter((img) => img.dataset.cmcHelperAvatar !== undefined).forEach(restore);
         return;
     }
 
-    document.querySelectorAll('table tbody tr').forEach((row) => {
-        const symbol = row.querySelector('.symbol-name')?.textContent?.trim().toLowerCase();
-        const names = symbol ? order.get(symbol) : undefined;
-        const imgs = [...row.querySelectorAll<HTMLImageElement>(AVATAR_SELECTOR)];
-
-        // Unsure which avatar is which: leave CMC's.
-        if (!names || imgs.length === 0 || names.length !== imgs.length) {
-            return;
-        }
-
-        imgs.forEach((img, index) => setIcon(img, iconOf(names[index])));
-    });
+    imgs.forEach((img, index) => setIcon(img, iconOf(names[index])));
 }
