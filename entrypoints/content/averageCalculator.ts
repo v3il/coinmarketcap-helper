@@ -90,7 +90,8 @@ export function openCalculator(cell: HTMLElement, ticker: string, price: number,
         if (!hidden) {
             coinsLine.replaceChildren(
                 `${formatCoins(place.coins)} → `,
-                h('b', {}, `${formatCoins(position.coins)} ${ticker}`)
+                h('b', {}, `${formatCoins(position.coins)} ${ticker}`),
+                ` (+${formatCoins(position.coins - place.coins)})`
             );
         }
     };
