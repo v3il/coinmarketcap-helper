@@ -1,3 +1,4 @@
+import { formatPrice } from '@/lib/averaging';
 import { addTransaction, type PortfolioSnapshot } from './cmcApi';
 import { h } from './dom';
 import { TABLE_SELECTOR } from './render';
@@ -77,8 +78,6 @@ function findHoldingsCell(row: Element, symbol: string): HTMLTableCellElement | 
 
 /** 0.1 + 0.2 → "0.3": up to 10 decimals, no float noise, no trailing zeros. */
 const formatAmount = (value: number) => value.toFixed(10).replace(/\.?0+$/, '');
-
-const formatPrice = (value: number) => (value >= 1 ? value.toFixed(2) : value.toPrecision(4));
 
 /** Last state of the "Free" checkbox, kept while the tab is open (you usually sync several rewards in a row). */
 let lastFree = false;
