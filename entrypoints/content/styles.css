@@ -354,12 +354,12 @@ img.cmc-helper-logo {
 /* "To buy" list: a star before the coin's logo, a yellowish row, a filter above the table. */
 .cmc-helper-star {
     flex: none;
-    margin: 0 8px 0 0;
+    margin: 0 12px 0 0;
     padding: 0 2px;
     border: none;
     background: transparent;
     color: #a6b0c3;
-    font-size: 16px;
+    font-size: 20px;
     line-height: 1;
     cursor: pointer;
     opacity: 0.5;
