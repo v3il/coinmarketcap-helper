@@ -10,7 +10,7 @@ import {
 } from '@/lib/messages';
 import { deserializeRates, type LoadedRates, type SerializedRates } from '@/lib/rates';
 import { renderAmountEditors } from './amountEditor';
-import type { PortfolioSnapshot } from './cmcApi';
+import type { PortfolioSnapshot, PositionCosts } from './cmcApi';
 import { invalidateHoldings, loadHoldings, loadPositionCosts } from './holdings';
 import { invalidatePageSettings, loadPageSettings } from './pageSettings';
 import {
@@ -37,6 +37,9 @@ export function main() {
     // Holdings and settings arrive asynchronously; each new value bumps the version so cells re-render.
     let snapshot: PortfolioSnapshot | null = null;
     let snapshotPromise: Promise<PortfolioSnapshot | null> | undefined;
+    // What each position cost: for the average price calculator.
+    let costs: PositionCosts | null = null;
+    let costsPromise: Promise<PositionCosts> | undefined;
     let settings: PageSettings | null = null;
     let settingsPromise: Promise<PageSettings> | undefined;
     let version = 0;
@@ -55,11 +58,11 @@ export function main() {
 
     // Positions for personal Telegram alerts (kept in the extension's local storage).
     const reportHoldings = async (value: PortfolioSnapshot) => {
-        const costs = await loadPositionCosts();
+        const positionCosts = await loadPositionCosts();
         const holdings = Object.fromEntries([...value.holdings].map(([symbol, places]) => [
             symbol,
             places.map(({ portfolio, value: usd, balance }) => {
-                const cost = costs.get(symbol)?.get(portfolio);
+                const cost = positionCosts.get(symbol)?.get(portfolio);
                 return { portfolio, value: usd, balance, ...(cost === undefined ? {} : { cost }) };
             })
         ]));
@@ -84,6 +87,17 @@ export function main() {
                     reportHoldings(value);
                 }
 
+                scheduleUpdate();
+            });
+        }
+
+        const nextCosts = loadPositionCosts();
+
+        if (nextCosts !== costsPromise) {
+            costsPromise = nextCosts;
+            nextCosts.then((value) => {
+                costs = value;
+                version++;
                 scheduleUpdate();
             });
         }
@@ -115,7 +129,7 @@ export function main() {
         const hidden = areBalancesHidden();
 
         if (snapshot) {
-            renderAmountEditors({ snapshot, hidden, onAdded: refreshAfterTransaction });
+            renderAmountEditors({ snapshot, costs, hidden, onAdded: refreshAfterTransaction });
         }
 
         // Read holdings, settings and version only after the await: they may arrive meanwhile, and the version

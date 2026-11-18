@@ -1,5 +1,6 @@
 import { formatPrice } from '@/lib/averaging';
-import { addTransaction, type PortfolioSnapshot } from './cmcApi';
+import { openCalculator, type CalcPlace } from './averageCalculator';
+import { addTransaction, type PortfolioSnapshot, type PositionCosts } from './cmcApi';
 import { h } from './dom';
 import { TABLE_SELECTOR } from './render';
 
@@ -12,11 +13,14 @@ const OVERVIEW_SYMBOL_SELECTOR = '.symbol-name';
 const CELL_CLASS = 'cmc-helper-editable';
 const BUTTON_CLASS = 'cmc-helper-edit';
 const EDITOR_CLASS = 'cmc-helper-editor';
+const CALC_BUTTON_CLASS = 'cmc-helper-calc';
 /** A table matches a CMC portfolio if their coin sets overlap at least this much (Jaccard). */
 const MIN_MATCH = 0.6;
 
 export interface AmountEditorContext {
     snapshot: PortfolioSnapshot;
+    /** What each position cost, for the average price calculator; null until loaded. */
+    costs: PositionCosts | null;
     /** CMC hides balances: don't prefill the current amount. */
     hidden: boolean;
     /** Called after a transaction was added, to reload the current view. */
@@ -301,6 +305,56 @@ function openEditor(cell: HTMLElement, symbol: string, places: Place[], context:
 }
 
 /**
+ * The 🧮 average price calculator, left of the "+": only for positions with coins and a known cost.
+ * Rebuilt only when its data changes, independently of the "+".
+ */
+function renderCalcButton(cell: HTMLElement, symbol: string, places: Place[], context: AmountEditorContext) {
+    const price = context.snapshot.coins.get(symbol)?.price ?? 0;
+    const calcPlaces: CalcPlace[] = places.flatMap((place) => {
+        const cost = context.costs?.get(symbol)?.get(place.name);
+        return typeof cost === 'number' && place.balance > 0
+            ? [{ id: place.id, name: place.name, coins: place.balance, cost }]
+            : [];
+    });
+    const existing = cell.querySelector<HTMLButtonElement>(`:scope > .${CALC_BUTTON_CLASS}`);
+
+    if (calcPlaces.length === 0 || !(price > 0)) {
+        existing?.remove();
+        return;
+    }
+
+    const key = `${calcPlaces.map(({ id, coins, cost }) => `${id}:${coins}:${cost}`).join(',')}|${price}`;
+
+    if (existing?.dataset.key === key) {
+        return;
+    }
+
+    existing?.remove();
+    const ticker = symbol.toUpperCase();
+    const button = h(
+        'button',
+        {
+            type: 'button',
+            class: CALC_BUTTON_CLASS,
+            title: 'Average price calculator',
+            'aria-label': `${ticker} average price calculator`
+        },
+        '🧮'
+    );
+    button.dataset.key = key;
+    button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        closeEditors();
+        openCalculator(cell, ticker, price, calcPlaces);
+    });
+    ['mousedown', 'pointerdown'].forEach((type) => {
+        button.addEventListener(type, (event) => event.stopPropagation());
+    });
+    cell.append(button);
+}
+
+/**
  * Adds a small "+" after the amount in each row: Holdings on a single-portfolio table, Balance on the overview.
  * Idempotent; the button and the editor are absolutely positioned, so the table layout never changes.
  */
@@ -348,6 +402,9 @@ export function renderAmountEditors(context: AmountEditorContext) {
             return;
         }
 
+        cell.classList.add(CELL_CLASS);
+        renderCalcButton(cell, symbol, places, context);
+
         const key = `${places.map((item) => `${item.id}:${item.balance}`).join(',')}|${symbol}|${context.hidden}`;
         const existing = cell.querySelector<HTMLButtonElement>(`:scope > .${BUTTON_CLASS}`);
 
@@ -382,7 +439,7 @@ export function renderAmountEditors(context: AmountEditorContext) {
 
 // Close the editor when clicking elsewhere.
 document.addEventListener('mousedown', (event) => {
-    if (!(event.target as Element | null)?.closest?.(`.${EDITOR_CLASS}, .${BUTTON_CLASS}`)) {
+    if (!(event.target as Element | null)?.closest?.(`.${EDITOR_CLASS}, .${BUTTON_CLASS}, .${CALC_BUTTON_CLASS}`)) {
         closeEditors();
     }
 });

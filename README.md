@@ -37,6 +37,9 @@ It can also watch those rates in the background and message you in **Telegram** 
   the new total or just the change (**±**: `+12`, `-5`), in whole coins. The extension adds a buy or sell for the
   difference at the current price. On the overview, coins held in several portfolios let you pick which one to
   change. Tick 🎁 **Free** for staking rewards or airdrops: the buy is recorded at $0, so invested doesn't grow.
+- 🧮 **Average price calculator** — the 🧮 next to the **+** shows what buying more would do: type an amount in
+  dollars and see the new average price and drawdown %. Information only, nothing is added to the portfolio. The
+  average follows CMC's P/L, so free coins and past profits lower it (it's the break-even price).
 - 🔔 **Telegram alerts** — a message when the best rate for one of your coins goes up, a short high-rate promo
   shows up or a coin's price jumps, plus a weekly summary of the best moves.
 - 🚀 **Fast** — rates are cached by the extension for 30 minutes, so the portfolio page doesn't wait for every
