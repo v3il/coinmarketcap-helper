@@ -48,6 +48,9 @@ export function parseUsd(text: string): number | null {
 
 export const formatPrice = (value: number) => (value >= 1 ? value.toFixed(2) : value.toPrecision(4));
 
+/** 1234.5678 → "1234.57", 20 → "20", 0.012345 → "0.01235". */
+export const formatCoins = (value: number) => String(Number(value >= 1 ? value.toFixed(2) : value.toPrecision(4)));
+
 /** −0.42 → "−42.0%", 0.1 → "+10.0%". */
 export function formatChange(change: number): string {
     const text = `${Math.abs(change * 100).toFixed(1)}%`;

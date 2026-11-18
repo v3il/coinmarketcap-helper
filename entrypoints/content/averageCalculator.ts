@@ -1,5 +1,5 @@
 import {
-    afterBuy, formatChange, formatPrice, parseUsd, positionStats, type PositionStats
+    afterBuy, formatChange, formatCoins, formatPrice, parseUsd, positionStats, type PositionStats
 } from '@/lib/averaging';
 import { h } from './dom';
 
@@ -20,7 +20,8 @@ export interface CalcPlace {
 const priceText = ({ average }: PositionStats) => (average === null ? 'paid back' : `$${formatPrice(average)}`);
 const changeText = ({ change }: PositionStats) => (change === null ? '—' : formatChange(change));
 
-export function openCalculator(cell: HTMLElement, ticker: string, price: number, places: CalcPlace[]) {
+/** `hidden`: CMC hides balances, so the coin count isn't shown either. */
+export function openCalculator(cell: HTMLElement, ticker: string, price: number, places: CalcPlace[], hidden: boolean) {
     if (places.length === 0 || !(price > 0)) {
         return;
     }
@@ -45,7 +46,14 @@ export function openCalculator(cell: HTMLElement, ticker: string, price: number,
     const cancel = h('button', { type: 'button', class: `${EDITOR_CLASS}__cancel`, title: 'Close (Esc)' }, '✕');
     const averageLine = h('div');
     const changeLine = h('div');
-    const result = h('div', { class: `${CALC_CLASS}__result`, 'aria-live': 'polite' }, averageLine, changeLine);
+    const coinsLine = h('div');
+    const result = h(
+        'div',
+        { class: `${CALC_CLASS}__result`, 'aria-live': 'polite' },
+        averageLine,
+        changeLine,
+        coinsLine
+    );
     const editor = h(
         'div',
         { class: EDITOR_CLASS, role: 'dialog', 'aria-label': `Average ${ticker} price` },
@@ -59,6 +67,7 @@ export function openCalculator(cell: HTMLElement, ticker: string, price: number,
         const text = input.value.trim();
         const usd = parseUsd(text);
         result.classList.remove(`${CALC_CLASS}__result--error`);
+        coinsLine.textContent = '';
 
         if (text === '') {
             averageLine.textContent = `Avg ${priceText(now)} · ${changeText(now)}`;
@@ -73,9 +82,17 @@ export function openCalculator(cell: HTMLElement, ticker: string, price: number,
             return;
         }
 
-        const after = positionStats(afterBuy(place, price, usd), price);
+        const position = afterBuy(place, price, usd);
+        const after = positionStats(position, price);
         averageLine.replaceChildren(`Avg ${priceText(now)} → `, h('b', {}, priceText(after)));
         changeLine.replaceChildren(`${changeText(now)} → `, h('b', {}, changeText(after)));
+
+        if (!hidden) {
+            coinsLine.replaceChildren(
+                `${formatCoins(place.coins)} → `,
+                h('b', {}, `${formatCoins(position.coins)} ${ticker}`)
+            );
+        }
     };
 
     input.addEventListener('input', update);

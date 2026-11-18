@@ -25,7 +25,7 @@ _Updated: 2026-11-16._
 - **Price jump alerts:** +30% (configurable) since the previous check for any held coin, with the position's P/L % (from CMC's per-portfolio P/L).
 - **Banner:** Earn / yr — income now vs at the best rates, USD and %, best moves in the tooltip; shared with the weekly summary.
 - **"📍 Now on"** shows the current rate on each exchange.
-- **Average price calculator:** 🧮 next to Set amount — buy for $X → new average price and drawdown %; information only.
+- **Average price calculator:** 🧮 next to Set amount — buy for $X → new average price, drawdown % and coin count; information only.
 
 ## Planned
 

@@ -323,7 +323,8 @@ function renderCalcButton(cell: HTMLElement, symbol: string, places: Place[], co
         return;
     }
 
-    const key = `${calcPlaces.map(({ id, coins, cost }) => `${id}:${coins}:${cost}`).join(',')}|${price}`;
+    const data = calcPlaces.map(({ id, coins, cost }) => `${id}:${coins}:${cost}`).join(',');
+    const key = `${data}|${price}|${context.hidden}`;
 
     if (existing?.dataset.key === key) {
         return;
@@ -346,7 +347,7 @@ function renderCalcButton(cell: HTMLElement, symbol: string, places: Place[], co
         event.preventDefault();
         event.stopPropagation();
         closeEditors();
-        openCalculator(cell, ticker, price, calcPlaces);
+        openCalculator(cell, ticker, price, calcPlaces, context.hidden);
     });
     ['mousedown', 'pointerdown'].forEach((type) => {
         button.addEventListener(type, (event) => event.stopPropagation());
