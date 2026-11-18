@@ -40,6 +40,24 @@ export function findJumps(
     });
 }
 
+/** Coins whose price fell by at least `minPercent` since their baseline (`percent` is negative). */
+export function findDrops(
+    prices: Map<string, number>,
+    baselines: Record<string, PriceBaseline>,
+    minPercent: number
+): Jump[] {
+    return [...prices].flatMap(([symbol, price]) => {
+        const baseline = baselines[symbol];
+
+        if (!baseline || baseline.price <= 0) {
+            return [];
+        }
+
+        const percent = (price / baseline.price - 1) * 100;
+        return percent <= -minPercent ? [{ symbol, percent, since: baseline.at }] : [];
+    });
+}
+
 /** P/L of a coin's positions at `price`, % of what was put in; null unless every position's cost is known. */
 export function positionPercent(positions: { balance?: number; cost?: number }[], price: number): number | null {
     if (positions.length === 0 || positions.some(({ balance, cost }) => balance === undefined || cost === undefined)) {
@@ -67,16 +85,28 @@ const ago = (ms: number) => {
 
 const signed = (percent: number) => `${percent >= 0 ? '+' : '−'}${Math.abs(Math.round(percent))}%`;
 
+/** One coin's lines: how much and since when, where it's held and the position's result. */
+const alertBlock = ({ symbol, percent, since, portfolios, position }: JumpAlert, now: number) => [
+    `🪙 <b>${escapeHtml(symbol.toUpperCase())}</b> ${signed(percent)} since the last check (${ago(now - since)})`,
+    `💼 ${portfolios.map(escapeHtml).join(', ')}${position === null ? '' : ` · your position ${signed(position)}`}`
+].join('\n');
+
 /**
  * 🚀 Price jump
  * 🪙 XYZ +42% since the last check (6 h ago)
  * 💼 Trash · your position +180%
  */
 export function formatJumps(jumps: JumpAlert[], now: number): string {
-    const blocks = jumps.map(({ symbol, percent, since, portfolios, position }) => [
-        `🪙 <b>${escapeHtml(symbol.toUpperCase())}</b> ${signed(percent)} since the last check (${ago(now - since)})`,
-        `💼 ${portfolios.map(escapeHtml).join(', ')}${position === null ? '' : ` · your position ${signed(position)}`}`
-    ].join('\n'));
-
+    const blocks = jumps.map((jump) => alertBlock(jump, now));
     return [`<b>🚀 Price ${jumps.length === 1 ? 'jump' : 'jumps'}</b>`, ...blocks].join('\n\n');
+}
+
+/**
+ * 📉 Price drop
+ * 🪙 XYZ −35% since the last check (6 h ago)
+ * 💼 Trash · your position −60%
+ */
+export function formatDrops(drops: JumpAlert[], now: number): string {
+    const blocks = drops.map((drop) => alertBlock(drop, now));
+    return [`<b>📉 Price ${drops.length === 1 ? 'drop' : 'drops'}</b>`, ...blocks].join('\n\n');
 }

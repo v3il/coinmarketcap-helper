@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findJumps, formatJumps, positionPercent } from './jumps';
+import { findDrops, findJumps, formatDrops, formatJumps, positionPercent } from './jumps';
 
 const HOUR = 3600_000;
 const baseline = (price: number, at = 0) => ({ price, at });
@@ -61,5 +61,44 @@ describe('formatJumps', () => {
 
     it('never shows amounts', () => {
         expect(formatJumps([{ ...jump, position: 180 }], HOUR)).not.toContain('$');
+    });
+});
+
+describe('findDrops', () => {
+    it('finds a coin down by at least the threshold since the last check', () => {
+        const drops = findDrops(new Map([['xyz', 0.6]]), { xyz: baseline(1) }, 30);
+        expect(drops).toHaveLength(1);
+        expect(drops[0].symbol).toBe('xyz');
+        expect(drops[0].percent).toBeCloseTo(-40);
+    });
+
+    it('counts exactly the threshold', () => {
+        expect(findDrops(new Map([['xyz', 0.7]]), { xyz: baseline(1) }, 30)).toHaveLength(1);
+    });
+
+    it('ignores a smaller fall and any rise', () => {
+        expect(findDrops(new Map([['xyz', 0.9], ['abc', 3]]), { xyz: baseline(1), abc: baseline(1) }, 30)).toEqual([]);
+    });
+
+    it('needs a baseline', () => {
+        expect(findDrops(new Map([['xyz', 0.1]]), {}, 30)).toEqual([]);
+    });
+});
+
+describe('formatDrops', () => {
+    const drop = { symbol: 'xyz', percent: -35.2, since: 0, portfolios: ['Trash'], position: null };
+
+    it('says how much and since when', () => {
+        const text = formatDrops([drop], 6 * HOUR);
+        expect(text).toContain('📉 Price drop<');
+        expect(text).toContain('XYZ</b> −35% since the last check (6 h ago)');
+    });
+
+    it('adds the position result when known', () => {
+        expect(formatDrops([{ ...drop, position: -60 }], HOUR)).toContain('Trash · your position −60%');
+    });
+
+    it('uses the plural for several coins', () => {
+        expect(formatDrops([drop, { ...drop, symbol: 'abc' }], HOUR)).toContain('📉 Price drops');
     });
 });
