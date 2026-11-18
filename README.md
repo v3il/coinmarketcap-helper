@@ -46,7 +46,7 @@ It can also watch those rates in the background and message you in **Telegram** 
 - ⭐ **To buy list** — the ☆ before a coin marks it as one you'd like to buy more of. Marked rows get a
   yellowish highlight, and **★ To buy** above the table shows only them. Kept in the extension, tickers only.
 - 🔔 **Telegram alerts** — a message when the best rate for one of your coins goes up, a short high-rate promo
-  shows up or a coin's price jumps, plus a weekly summary of the best moves.
+  shows up or a coin's price jumps or drops, plus a weekly summary of the best moves.
 - 🚀 **Fast** — rates are cached by the extension for 30 minutes, so the portfolio page doesn't wait for every
   exchange each time; older rates show at once and refresh in the background.
 - ⚡ **No login, no API keys** — only public / website endpoints and public blockchain nodes are used.
@@ -104,6 +104,8 @@ messages you about:
   off), e.g. `XYZ +42% since the last check (6 h ago)`, with the result of your position (`your position +180%`)
   when CoinMarketCap knows what it cost. Every held coin counts here, however small; prices come from
   CoinMarketCap's public quote API.
+- 📉 **Price drop** — the same for a fall: a coin you hold is down by 30% or more since the previous check
+  (configurable, can be turned off), e.g. `XYZ −35% since the last check (6 h ago)`, in its own message.
 
 Coins worth less than $10 in your portfolio (configurable), or no longer held at all, get no rate or promo alerts,
 so a coin or two kept just to watch the price stays quiet (the summary counts them in the totals, but suggests no moves for them). Portfolios unchecked

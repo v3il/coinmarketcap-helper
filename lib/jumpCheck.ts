@@ -1,18 +1,20 @@
 import { withoutExcluded } from './holdings';
-import { findJumps, formatJumps, positionPercent, type JumpAlert, type PriceBaseline } from './jumps';
+import {
+    findDrops, findJumps, formatDrops, formatJumps, positionPercent, type Jump, type JumpAlert, type PriceBaseline
+} from './jumps';
 import { fetchPrices } from './prices';
 import { coinIdsItem, priceBaselinesItem, type Settings } from './storage';
 import { sendMessage } from './telegram';
 
 type Position = { portfolio: string; value: number; balance?: number; cost?: number };
 
-/** `ok: false` only when the jump message couldn't be sent; a price API failure is just a warning. */
+/** `ok: false` only when a jump or drop message couldn't be sent; a price API failure is just a warning. */
 export type JumpCheckResult =
-    | { ok: true; jumps: number; warning?: string }
-    | { ok: false; jumps: number; error: string };
+    | { ok: true; jumps: number; drops: number; warning?: string }
+    | { ok: false; jumps: number; drops: number; error: string };
 
 /**
- * Compares held coins' prices with the previous check and sends one Telegram message for the jumps.
+ * Compares held coins' prices with the previous check and sends one Telegram message for the jumps, one for the drops.
  * All held coins count, however small (lottery coins are worth a few dollars); unchecked portfolios don't.
  * Baselines always move on, except for coins whose alert didn't get through (retried next time).
  */
@@ -33,7 +35,7 @@ export async function runJumpCheck(
     try {
         byId = await fetchPrices(held.map(([symbol]) => ids[symbol]));
     } catch (error) {
-        return { ok: true, jumps: 0, warning: `prices failed: ${(error as Error).message}` };
+        return { ok: true, jumps: 0, drops: 0, warning: `prices failed: ${(error as Error).message}` };
     }
 
     const prices = new Map(held.flatMap(([symbol]) => {
@@ -55,11 +57,17 @@ export async function runJumpCheck(
     });
 
     const jumps = settings.jumpAlerts ? findJumps(prices, previous, settings.minJumpPercent) : [];
-    let result: JumpCheckResult = { ok: true, jumps: jumps.length };
+    const drops = settings.dropAlerts ? findDrops(prices, previous, settings.minDropPercent) : [];
+    const positionsOf = new Map(held);
+    const errors: string[] = [];
 
-    if (jumps.length > 0) {
-        const positionsOf = new Map(held);
-        const alerts: JumpAlert[] = jumps.map((jump) => {
+    // One message per kind; a message that fails keeps its coins' old baselines, so the next check retries them.
+    const send = async (found: Jump[], format: (alerts: JumpAlert[], at: number) => string, what: string) => {
+        if (found.length === 0) {
+            return;
+        }
+
+        const alerts: JumpAlert[] = found.map((jump) => {
             const positions = positionsOf.get(jump.symbol) ?? [];
             return {
                 ...jump,
@@ -69,15 +77,22 @@ export async function runJumpCheck(
         });
 
         try {
-            await sendMessage(settings.botToken, settings.chatId, formatJumps(alerts, now));
+            await sendMessage(settings.botToken, settings.chatId, format(alerts, now));
         } catch (error) {
-            jumps.forEach(({ symbol }) => {
+            found.forEach(({ symbol }) => {
                 next[symbol] = previous[symbol];
             });
-            const reason = (error as Error).message;
-            result = { ok: false, jumps: jumps.length, error: `Failed to send price jumps: ${reason}` };
+            errors.push(`Failed to send price ${what}: ${(error as Error).message}`);
         }
-    }
+    };
+
+    await send(jumps, formatJumps, 'jumps');
+    await send(drops, formatDrops, 'drops');
+
+    const counts = { jumps: jumps.length, drops: drops.length };
+    const result: JumpCheckResult = errors.length > 0
+        ? { ok: false, ...counts, error: errors.join('; ') }
+        : { ok: true, ...counts };
 
     await priceBaselinesItem.setValue(next);
     return result;

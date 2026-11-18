@@ -366,6 +366,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
 
     if (jumpCheck.ok) {
         message += jumpCheck.jumps > 0 ? `, price jumps: ${jumpCheck.jumps}` : '';
+        message += jumpCheck.drops > 0 ? `, price drops: ${jumpCheck.drops}` : '';
         message += jumpCheck.warning ? ` (${jumpCheck.warning})` : '';
     } else if (ok) {
         ok = false;

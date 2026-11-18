@@ -27,6 +27,7 @@ _Updated: 2026-11-16._
 - **"📍 Now on"** shows the current rate on each exchange.
 - **Average price calculator:** 🧮 next to Set amount — buy for $X → new average price, drawdown % and coin count; information only.
 - **Portfolio logos:** exchange / wallet logos instead of CMC's avatars in the sidebar and the overview table; a setting to turn off.
+- **Price drop alerts:** −30% (configurable) since the previous check, any held coin, in their own message.
 - **To buy list:** ☆ next to a coin marks it to buy more; marked rows are highlighted, "★ To buy" shows only them.
 
 ## Planned

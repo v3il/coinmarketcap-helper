@@ -111,6 +111,10 @@ export function App() {
             minJumpPercent: Number.isFinite(form.minJumpPercent) && form.minJumpPercent > 0
                 ? form.minJumpPercent
                 : DEFAULT_SETTINGS.minJumpPercent,
+            dropAlerts: form.dropAlerts,
+            minDropPercent: Number.isFinite(form.minDropPercent) && form.minDropPercent > 0
+                ? form.minDropPercent
+                : DEFAULT_SETTINGS.minDropPercent,
             weeklyDigest: form.weeklyDigest,
             digestDay: form.digestDay,
             excludedPortfolios: form.excludedPortfolios,
@@ -422,6 +426,29 @@ export function App() {
                                 disabled={!form.jumpAlerts}
                                 value={form.minJumpPercent}
                                 onInput={(e) => update('minJumpPercent', e.currentTarget.valueAsNumber)}
+                            />
+                        </label>
+                    </div>
+
+                    <div class="row">
+                        <label class="checkbox">
+                            <input
+                                type="checkbox"
+                                checked={form.dropAlerts}
+                                onChange={(e) => update('dropAlerts', e.currentTarget.checked)}
+                            />
+                            <span>Price drop alerts (any coin you hold)</span>
+                        </label>
+
+                        <label>
+                            <span>From −%, since the last check</span>
+                            <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                disabled={!form.dropAlerts}
+                                value={form.minDropPercent}
+                                onInput={(e) => update('minDropPercent', e.currentTarget.valueAsNumber)}
                             />
                         </label>
                     </div>

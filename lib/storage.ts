@@ -17,6 +17,9 @@ export interface Settings {
     /** Notify when a held coin's price is up by at least minJumpPercent since the previous check. */
     jumpAlerts: boolean;
     minJumpPercent: number;
+    /** Notify when a held coin's price is down by at least minDropPercent since the previous check. */
+    dropAlerts: boolean;
+    minDropPercent: number;
     /** A weekly Telegram summary: income now vs at the best rates, the best moves, running promos. */
     weeklyDigest: boolean;
     /** Day of the week for the summary, 0 = Sunday (Date.getDay); sent with the first check after 9:00. */
@@ -41,6 +44,8 @@ export const DEFAULT_SETTINGS: Settings = {
     minPromoApr: 50,
     jumpAlerts: true,
     minJumpPercent: 30,
+    dropAlerts: true,
+    minDropPercent: 30,
     weeklyDigest: true,
     digestDay: 1,
     bingxAutoRefresh: false,
