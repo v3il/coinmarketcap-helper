@@ -114,7 +114,8 @@ export function App() {
             weeklyDigest: form.weeklyDigest,
             digestDay: form.digestDay,
             excludedPortfolios: form.excludedPortfolios,
-            portfolioExchanges: form.portfolioExchanges
+            portfolioExchanges: form.portfolioExchanges,
+            portfolioLogos: form.portfolioLogos
         };
 
         await settingsItem.setValue(value);
@@ -164,6 +165,15 @@ export function App() {
         await settingsItem.setValue({ ...current, bingxAutoRefresh });
         setForm((value) => ({ ...value, bingxAutoRefresh }));
         setSaved((value) => ({ ...value, bingxAutoRefresh }));
+    };
+
+    // Saves right away, like the portfolio checkboxes.
+    const onToggleLogos = async (portfolioLogos: boolean) => {
+        const current = await getSettings();
+
+        await settingsItem.setValue({ ...current, portfolioLogos });
+        setForm((value) => ({ ...value, portfolioLogos }));
+        setSaved((value) => ({ ...value, portfolioLogos }));
     };
 
     const onRefreshBingx = async () => {
@@ -254,6 +264,14 @@ export function App() {
                 ) : (
                     <p class="hint">Open your portfolio on CoinMarketCap — the list is picked up from there.</p>
                 )}
+                <label class="checkbox">
+                    <input
+                        type="checkbox"
+                        checked={form.portfolioLogos}
+                        onChange={(e) => onToggleLogos(e.currentTarget.checked)}
+                    />
+                    <span>Exchange and wallet logos instead of CMC avatars</span>
+                </label>
             </section>
 
             <section>

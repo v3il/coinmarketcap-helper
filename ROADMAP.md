@@ -26,6 +26,7 @@ _Updated: 2026-11-16._
 - **Banner:** Earn / yr — income now vs at the best rates, USD and %, best moves in the tooltip; shared with the weekly summary.
 - **"📍 Now on"** shows the current rate on each exchange.
 - **Average price calculator:** 🧮 next to Set amount — buy for $X → new average price, drawdown % and coin count; information only.
+- **Portfolio logos:** exchange / wallet logos instead of CMC's avatars in the sidebar and the overview table; a setting to turn off.
 
 ## Planned
 

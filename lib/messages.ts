@@ -18,6 +18,7 @@ export const PAGE_SETTINGS_MESSAGE = 'cmc-helper:page-settings';
 export interface PageSettings {
     excludedPortfolios: string[];
     portfolioExchanges: Record<string, string>;
+    portfolioLogos: boolean;
 }
 
 /** Worker → CMC tabs: settings changed, re-render what depends on them. */

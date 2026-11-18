@@ -1,4 +1,5 @@
 import { exchangeResolver, withoutExcluded } from '@/lib/holdings';
+import { portfolioIcon } from '@/lib/portfolioIcons';
 import {
     HOLDINGS_MESSAGE,
     PAGE_SETTINGS_CHANGED_MESSAGE,
@@ -13,6 +14,7 @@ import { renderAmountEditors } from './amountEditor';
 import type { PortfolioSnapshot, PositionCosts } from './cmcApi';
 import { invalidateHoldings, loadHoldings, loadPositionCosts } from './holdings';
 import { invalidatePageSettings, loadPageSettings } from './pageSettings';
+import { renderPortfolioIcons } from './portfolioIcons';
 import {
     areBalancesHidden, getPortfolioTableSymbols, hasPortfolioTable, renderEarnColumn
 } from './render';
@@ -130,6 +132,16 @@ export function main() {
 
         if (snapshot) {
             renderAmountEditors({ snapshot, costs, hidden, onAdded: refreshAfterTransaction });
+        }
+
+        // Logos need the settings: a portfolio's exchange binding decides its logo (no guessing before they load).
+        if (settings) {
+            const resolveIcon = exchangeResolver(settings.portfolioExchanges);
+            renderPortfolioIcons({
+                enabled: settings.portfolioLogos,
+                iconOf: (name) => portfolioIcon(name, resolveIcon(name), (path) => chrome.runtime.getURL(path)),
+                order: snapshot?.portfolioOrder ?? null
+            });
         }
 
         // Read holdings, settings and version only after the await: they may arrive meanwhile, and the version

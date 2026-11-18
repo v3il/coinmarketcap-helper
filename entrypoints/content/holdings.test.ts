@@ -19,7 +19,7 @@ describe('position costs cache', () => {
         vi.spyOn(console, 'warn').mockImplementation(() => {});
         fetchPortfolios.mockResolvedValue([]);
         fetchPositionCosts.mockResolvedValue(new Map());
-        fetchPortfolioSnapshot.mockResolvedValue({ holdings: new Map(), coins: new Map() });
+        fetchPortfolioSnapshot.mockResolvedValue({ holdings: new Map(), coins: new Map(), portfolioOrder: new Map() });
     });
 
     afterEach(() => {

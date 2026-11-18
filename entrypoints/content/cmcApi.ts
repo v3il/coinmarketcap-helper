@@ -103,6 +103,8 @@ export interface PortfolioSnapshot {
     holdings: HoldingsByCoin;
     /** Lower-case symbol -> CMC id and price. */
     coins: Map<string, CoinInfo>;
+    /** Lower-case symbol -> every portfolio listed for it, in CMC's order (as the overview's avatars stack). */
+    portfolioOrder: Map<string, string[]>;
 }
 
 /** Every coin across all portfolios: where it's held, how much, and its current price. */
@@ -114,10 +116,12 @@ export async function fetchPortfolioSnapshot(): Promise<PortfolioSnapshot> {
     const data = await post<{ list: Item[] }>('/asset/v3/portfolio/dashboard/query-summary', {});
     const holdings: HoldingsByCoin = new Map();
     const coins = new Map<string, CoinInfo>();
+    const portfolioOrder = new Map<string, string[]>();
 
     data.list.forEach(({ symbol, cryptocurrencyId, currentPrice, subItems }) => {
         const key = symbol.toLowerCase();
         coins.set(key, { id: cryptocurrencyId, price: Number(currentPrice) || 0 });
+        portfolioOrder.set(key, (subItems ?? []).map((item) => item.portfolioName));
 
         const places = (subItems ?? [])
             .map((item) => ({
@@ -133,7 +137,7 @@ export async function fetchPortfolioSnapshot(): Promise<PortfolioSnapshot> {
         }
     });
 
-    return { holdings, coins };
+    return { holdings, coins, portfolioOrder };
 }
 
 export interface NewTransaction {

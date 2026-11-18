@@ -19,6 +19,8 @@ export default defineConfig({
             default_title: 'CMC Helper settings'
         },
         permissions: ['storage', 'alarms'],
+        // Wallet logos shown on the CMC page instead of its portfolio avatars.
+        web_accessible_resources: [{ resources: ['wallets/*'], matches: ['https://coinmarketcap.com/*'] }],
         host_permissions: [
             'https://coinmarketcap.com/*',
             'https://www.binance.com/*',

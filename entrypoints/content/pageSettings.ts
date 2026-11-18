@@ -1,6 +1,6 @@
 import { PAGE_SETTINGS_MESSAGE, type PageSettings } from '@/lib/messages';
 
-const EMPTY: PageSettings = { excludedPortfolios: [], portfolioExchanges: {} };
+const EMPTY: PageSettings = { excludedPortfolios: [], portfolioExchanges: {}, portfolioLogos: true };
 
 let cache: Promise<PageSettings> | null = null;
 

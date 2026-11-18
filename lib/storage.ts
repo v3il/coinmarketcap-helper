@@ -27,6 +27,8 @@ export interface Settings {
     excludedPortfolios: string[];
     /** CMC portfolio name -> exchange id or 'none' (other, no rate). Unset portfolios are guessed by name. */
     portfolioExchanges: Record<string, string>;
+    /** Exchange / wallet logos instead of CMC's portfolio avatars on the CMC page. */
+    portfolioLogos: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -43,7 +45,8 @@ export const DEFAULT_SETTINGS: Settings = {
     digestDay: 1,
     bingxAutoRefresh: false,
     excludedPortfolios: [],
-    portfolioExchanges: {}
+    portfolioExchanges: {},
+    portfolioLogos: true
 };
 
 /** Settings with defaults filled in for keys added after the user first saved them. */

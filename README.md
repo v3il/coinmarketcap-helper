@@ -40,6 +40,9 @@ It can also watch those rates in the background and message you in **Telegram** 
 - 🧮 **Average price calculator** — the 🧮 next to the **+** shows what buying more would do: type an amount in
   dollars and see the new average price, drawdown % and coin count. Information only, nothing is added to the portfolio. The
   average follows CMC's P/L, so free coins and past profits lower it (it's the break-even price).
+- 🏷️ **Portfolio logos** — CMC's look-alike portfolio avatars are replaced with the logo of the exchange a portfolio
+  is bound to, the wallet's logo (Phantom, Keplr, Leo, Telegram, Ready) or a generic wallet icon, in the sidebar and
+  the overview table. Can be turned off in the settings.
 - 🔔 **Telegram alerts** — a message when the best rate for one of your coins goes up, a short high-rate promo
   shows up or a coin's price jumps, plus a weekly summary of the best moves.
 - 🚀 **Fast** — rates are cached by the extension for 30 minutes, so the portfolio page doesn't wait for every

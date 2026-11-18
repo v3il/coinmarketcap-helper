@@ -344,3 +344,9 @@ div:has(> div > div[id^="google_ads_iframe"]), /* Ads */
 [cmc-ui-portal] .popover-base:has([data-scope="base-item-wrapper"]) { /* AI floating */
     display: none !important;
 }
+
+/* Exchange / wallet logos in place of CMC's portfolio avatars (sidebar and the overview's avatar stacks). */
+img.cmc-helper-logo {
+    object-fit: contain;
+    background: #fff;
+}

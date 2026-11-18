@@ -39,8 +39,8 @@ async function scheduleCheck() {
 
 /** Only what the CMC page needs — the bot token and chat id never leave the worker. */
 async function getPageSettings(): Promise<PageSettings> {
-    const { excludedPortfolios, portfolioExchanges } = await getSettings();
-    return { excludedPortfolios, portfolioExchanges };
+    const { excludedPortfolios, portfolioExchanges, portfolioLogos } = await getSettings();
+    return { excludedPortfolios, portfolioExchanges, portfolioLogos };
 }
 
 async function notifyCmcTabs() {
