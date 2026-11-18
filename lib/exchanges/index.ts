@@ -4,6 +4,7 @@ import { bybit } from './bybit';
 import { mexc } from './mexc';
 import { okx } from './okx';
 import { ready } from './ready';
+import { wallet } from './wallet';
 import { whitebit } from './whitebit';
 import type { Exchange } from './common';
 
@@ -13,4 +14,4 @@ export type {
 } from './common';
 
 /** To add an exchange: create a module exporting an `Exchange` and list it here. */
-export const EXCHANGES: Exchange[] = [binance, bybit, okx, mexc, whitebit, bingx, ready];
+export const EXCHANGES: Exchange[] = [binance, bybit, okx, mexc, whitebit, bingx, ready, wallet];

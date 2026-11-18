@@ -1,0 +1,126 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeBrowser } from 'wxt/testing/fake-browser';
+import { runJumpCheck } from './jumpCheck';
+import { fetchPrices } from './prices';
+import { coinIdsItem, DEFAULT_SETTINGS, priceBaselinesItem } from './storage';
+import { sendMessage } from './telegram';
+
+vi.mock('./prices', () => ({ fetchPrices: vi.fn() }));
+vi.mock('./telegram', async (original) => ({ ...await original<object>(), sendMessage: vi.fn() }));
+
+const settings = { ...DEFAULT_SETTINGS, botToken: 't', chatId: 'c', excludedPortfolios: ['Savings'] };
+const holdings = {
+    xyz: [{ portfolio: 'Trash', value: 3, balance: 100, cost: 1 }],
+    abc: [{ portfolio: 'Trash', value: 2, balance: 1 }],
+    old: [{ portfolio: 'Savings', value: 5, balance: 1 }]
+};
+
+beforeEach(async () => {
+    fakeBrowser.reset();
+    vi.mocked(sendMessage).mockReset();
+    vi.mocked(fetchPrices).mockReset();
+    await coinIdsItem.setValue({ xyz: 1, abc: 2, old: 3 });
+    await priceBaselinesItem.setValue({ xyz: { price: 0.01, at: 0 }, abc: { price: 2, at: 0 } });
+    vi.mocked(fetchPrices).mockResolvedValue(new Map([[1, 0.02], [2, 2.1], [3, 9]]));
+});
+
+describe('runJumpCheck', () => {
+    it('keeps the baseline of a held coin it has no CMC id for', async () => {
+        await coinIdsItem.setValue({ xyz: 1, abc: 2 });
+        await priceBaselinesItem.setValue({ xyz: { price: 0.01, at: 0 }, nid: { price: 4, at: 0 } });
+
+        await runJumpCheck(settings, { ...holdings, nid: [{ portfolio: 'Trash', value: 1, balance: 1 }] }, 1000);
+
+        expect((await priceBaselinesItem.getValue()).nid).toEqual({ price: 4, at: 0 });
+    });
+
+    it('alerts on a jump, with the position result, and moves the baselines', async () => {
+        const result = await runJumpCheck(settings, holdings, 1000);
+
+        expect(result).toEqual({ ok: true, jumps: 1, drops: 0 });
+        const text = vi.mocked(sendMessage).mock.calls[0][2];
+        expect(text).toContain('XYZ');
+        expect(text).toContain('your position +100%');
+        expect(await priceBaselinesItem.getValue()).toEqual({
+            xyz: { price: 0.02, at: 1000 },
+            abc: { price: 2.1, at: 1000 }
+        });
+    });
+
+    it('leaves unchecked portfolios out (no price asked, no baseline)', async () => {
+        await runJumpCheck(settings, holdings, 1000);
+        expect(vi.mocked(fetchPrices).mock.calls[0][0].sort()).toEqual([1, 2]);
+    });
+
+    it('keeps the old baseline of a jumped coin when Telegram fails, so the next check retries', async () => {
+        vi.mocked(sendMessage).mockRejectedValue(new Error('down'));
+
+        const result = await runJumpCheck(settings, holdings, 1000);
+
+        expect(result.ok).toBe(false);
+        const baselines = await priceBaselinesItem.getValue();
+        expect(baselines.xyz).toEqual({ price: 0.01, at: 0 });
+        expect(baselines.abc).toEqual({ price: 2.1, at: 1000 });
+    });
+
+    it('changes nothing when prices fail to load, and only warns (the check itself is fine)', async () => {
+        vi.mocked(fetchPrices).mockRejectedValue(new Error('429'));
+
+        const result = await runJumpCheck(settings, holdings, 1000);
+        expect(result.ok).toBe(true);
+        expect(result.ok && result.warning).toContain('429');
+        expect((await priceBaselinesItem.getValue()).xyz).toEqual({ price: 0.01, at: 0 });
+        expect(sendMessage).not.toHaveBeenCalled();
+    });
+
+    describe('price drops', () => {
+        const withDrop = { ...holdings, dd: [{ portfolio: 'Trash', value: 1, balance: 10, cost: 10 }] };
+
+        beforeEach(async () => {
+            await coinIdsItem.setValue({ xyz: 1, abc: 2, old: 3, dd: 4 });
+            await priceBaselinesItem.setValue({
+                xyz: { price: 0.01, at: 0 }, abc: { price: 2, at: 0 }, dd: { price: 1, at: 0 }
+            });
+            vi.mocked(fetchPrices).mockResolvedValue(new Map([[1, 0.02], [2, 2.1], [3, 9], [4, 0.5]]));
+        });
+
+        it('sends drops in their own message, next to the jumps', async () => {
+            const result = await runJumpCheck(settings, withDrop, 1000);
+
+            expect(result).toEqual({ ok: true, jumps: 1, drops: 1 });
+            expect(sendMessage).toHaveBeenCalledTimes(2);
+            const drops = vi.mocked(sendMessage).mock.calls[1][2];
+            expect(drops).toContain('📉');
+            expect(drops).toContain('DD</b> −50%');
+            expect(drops).toContain('your position −50%');
+        });
+
+        it('keeps only the dropped coins\' baselines when the drop message fails', async () => {
+            vi.mocked(sendMessage).mockImplementation(async (_token, _chat, text) => {
+                if (text.includes('📉')) throw new Error('down');
+            });
+
+            const result = await runJumpCheck(settings, withDrop, 1000);
+
+            expect(result.ok).toBe(false);
+            expect(!result.ok && result.error).toContain('price drops');
+            const baselines = await priceBaselinesItem.getValue();
+            expect(baselines.dd).toEqual({ price: 1, at: 0 });
+            expect(baselines.xyz).toEqual({ price: 0.02, at: 1000 });
+        });
+
+        it('only moves baselines when drop alerts are off', async () => {
+            const result = await runJumpCheck({ ...settings, dropAlerts: false }, withDrop, 1000);
+
+            expect(result).toEqual({ ok: true, jumps: 1, drops: 0 });
+            expect(sendMessage).toHaveBeenCalledTimes(1);
+            expect((await priceBaselinesItem.getValue()).dd.price).toBe(0.5);
+        });
+    });
+
+    it('only moves baselines when alerts are off', async () => {
+        await runJumpCheck({ ...settings, jumpAlerts: false }, holdings, 1000);
+        expect(sendMessage).not.toHaveBeenCalled();
+        expect((await priceBaselinesItem.getValue()).xyz.price).toBe(0.02);
+    });
+});

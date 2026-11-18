@@ -15,7 +15,10 @@ export type FetchResponse =
 
 const isContentScript = () => typeof window !== 'undefined' && window.location.protocol !== 'chrome-extension:';
 
-export async function fetchDirect(url: string, init?: RequestInit): Promise<FetchResponse> {
+/** A source that doesn't answer in this time counts as failed, so it can't stall a whole check. */
+const TIMEOUT_MS = 20_000;
+
+export async function fetchDirect(url: string, init?: RequestInit, timeoutMs = TIMEOUT_MS): Promise<FetchResponse> {
     // APIs may localize text by the browser language (Ready's product names did); parsing expects English.
     const headers = new Headers(init?.headers);
 
@@ -24,7 +27,7 @@ export async function fetchDirect(url: string, init?: RequestInit): Promise<Fetc
     }
 
     try {
-        const response = await fetch(url, { ...init, headers });
+        const response = await fetch(url, { ...init, headers, signal: init?.signal ?? AbortSignal.timeout(timeoutMs) });
 
         if (!response.ok) {
             return { ok: false, error: `HTTP ${response.status} ${response.statusText} for ${url}` };

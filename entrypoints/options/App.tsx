@@ -107,10 +107,19 @@ export function App() {
             minPromoApr: Number.isFinite(form.minPromoApr)
                 ? Math.max(0, form.minPromoApr)
                 : DEFAULT_SETTINGS.minPromoApr,
+            jumpAlerts: form.jumpAlerts,
+            minJumpPercent: Number.isFinite(form.minJumpPercent) && form.minJumpPercent > 0
+                ? form.minJumpPercent
+                : DEFAULT_SETTINGS.minJumpPercent,
+            dropAlerts: form.dropAlerts,
+            minDropPercent: Number.isFinite(form.minDropPercent) && form.minDropPercent > 0
+                ? form.minDropPercent
+                : DEFAULT_SETTINGS.minDropPercent,
             weeklyDigest: form.weeklyDigest,
             digestDay: form.digestDay,
             excludedPortfolios: form.excludedPortfolios,
-            portfolioExchanges: form.portfolioExchanges
+            portfolioExchanges: form.portfolioExchanges,
+            portfolioLogos: form.portfolioLogos
         };
 
         await settingsItem.setValue(value);
@@ -160,6 +169,15 @@ export function App() {
         await settingsItem.setValue({ ...current, bingxAutoRefresh });
         setForm((value) => ({ ...value, bingxAutoRefresh }));
         setSaved((value) => ({ ...value, bingxAutoRefresh }));
+    };
+
+    // Saves right away, like the portfolio checkboxes.
+    const onToggleLogos = async (portfolioLogos: boolean) => {
+        const current = await getSettings();
+
+        await settingsItem.setValue({ ...current, portfolioLogos });
+        setForm((value) => ({ ...value, portfolioLogos }));
+        setSaved((value) => ({ ...value, portfolioLogos }));
     };
 
     const onRefreshBingx = async () => {
@@ -236,7 +254,7 @@ export function App() {
                                 {EXCHANGES.map((exchange) => (
                                     <option key={exchange.id} value={exchange.id}>{exchange.name}</option>
                                 ))}
-                                <option value={NOT_AN_EXCHANGE}>Wallet / other</option>
+                                <option value={NOT_AN_EXCHANGE}>Other (no rate)</option>
                             </select>,
                             <input
                                 key={`${name}-totals`}
@@ -250,6 +268,14 @@ export function App() {
                 ) : (
                     <p class="hint">Open your portfolio on CoinMarketCap — the list is picked up from there.</p>
                 )}
+                <label class="checkbox">
+                    <input
+                        type="checkbox"
+                        checked={form.portfolioLogos}
+                        onChange={(e) => onToggleLogos(e.currentTarget.checked)}
+                    />
+                    <span>Exchange and wallet logos instead of CMC avatars</span>
+                </label>
             </section>
 
             <section>
@@ -377,6 +403,52 @@ export function App() {
                                 disabled={!form.promoAlerts}
                                 value={form.minPromoApr}
                                 onInput={(e) => update('minPromoApr', e.currentTarget.valueAsNumber)}
+                            />
+                        </label>
+                    </div>
+
+                    <div class="row">
+                        <label class="checkbox">
+                            <input
+                                type="checkbox"
+                                checked={form.jumpAlerts}
+                                onChange={(e) => update('jumpAlerts', e.currentTarget.checked)}
+                            />
+                            <span>Price jump alerts (any coin you hold)</span>
+                        </label>
+
+                        <label>
+                            <span>From +%, since the last check</span>
+                            <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                disabled={!form.jumpAlerts}
+                                value={form.minJumpPercent}
+                                onInput={(e) => update('minJumpPercent', e.currentTarget.valueAsNumber)}
+                            />
+                        </label>
+                    </div>
+
+                    <div class="row">
+                        <label class="checkbox">
+                            <input
+                                type="checkbox"
+                                checked={form.dropAlerts}
+                                onChange={(e) => update('dropAlerts', e.currentTarget.checked)}
+                            />
+                            <span>Price drop alerts (any coin you hold)</span>
+                        </label>
+
+                        <label>
+                            <span>From −%, since the last check</span>
+                            <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                disabled={!form.dropAlerts}
+                                value={form.minDropPercent}
+                                onInput={(e) => update('minDropPercent', e.currentTarget.valueAsNumber)}
                             />
                         </label>
                     </div>

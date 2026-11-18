@@ -5,6 +5,8 @@ import {
     BINGX_REFRESH_MESSAGE,
     CHECK_NOW_MESSAGE,
     DIGEST_NOW_MESSAGE,
+    FAVORITE_TOGGLE_MESSAGE,
+    FAVORITES_CHANGED_MESSAGE,
     HOLDINGS_MESSAGE,
     PAGE_SETTINGS_CHANGED_MESSAGE,
     PAGE_SETTINGS_MESSAGE,
@@ -12,16 +14,18 @@ import {
     PORTFOLIO_NAMES_MESSAGE,
     RATES_MESSAGE,
     type BingxProductsMessage,
+    type FavoriteToggleMessage,
     type HoldingsMessage,
     type PageSettings,
     type PortfolioMessage,
     type PortfolioNamesMessage
 } from '@/lib/messages';
+import { toggleFavorite } from '@/lib/favorites';
 import { checkRates, sendDigestNow } from '@/lib/notifier';
 import { rememberPortfolioSymbols } from '@/lib/portfolio';
 import { getRates, PAGE_MAX_AGE_MS } from '@/lib/ratesCache';
 import {
-    bingxRatesItem, getSettings, holdingsItem, knownPortfoliosItem, settingsItem
+    bingxRatesItem, coinIdsItem, favoritesItem, getSettings, holdingsItem, knownPortfoliosItem, settingsItem
 } from '@/lib/storage';
 import { FETCH_MESSAGE, fetchDirect, type FetchRequest } from '@/utils/request';
 
@@ -39,17 +43,30 @@ async function scheduleCheck() {
 
 /** Only what the CMC page needs — the bot token and chat id never leave the worker. */
 async function getPageSettings(): Promise<PageSettings> {
-    const { excludedPortfolios, portfolioExchanges } = await getSettings();
-    return { excludedPortfolios, portfolioExchanges };
+    const { excludedPortfolios, portfolioExchanges, portfolioLogos } = await getSettings();
+    return { excludedPortfolios, portfolioExchanges, portfolioLogos, favorites: await favoritesItem.getValue() };
 }
 
-async function notifyCmcTabs() {
+/** Toggles run one after another, so quick clicks (or two tabs) never overwrite each other. */
+let favoritesQueue: Promise<unknown> = Promise.resolve();
+
+function toggleFavoriteCoin(symbol: string): Promise<string[]> {
+    const next = favoritesQueue.then(async () => {
+        const list = toggleFavorite(await favoritesItem.getValue(), symbol);
+        await favoritesItem.setValue(list);
+        return list;
+    });
+    favoritesQueue = next.catch(() => {});
+    return next;
+}
+
+async function notifyCmcTabs(type: string = PAGE_SETTINGS_CHANGED_MESSAGE) {
     const tabs = await chrome.tabs.query({ url: 'https://coinmarketcap.com/*' });
 
     tabs.forEach((tab) => {
         if (tab.id !== undefined) {
             // Tabs without the content script (not loaded yet) just reject; nothing to update there.
-            chrome.tabs.sendMessage(tab.id, { type: PAGE_SETTINGS_CHANGED_MESSAGE }).catch(() => {});
+            chrome.tabs.sendMessage(tab.id, { type }).catch(() => {});
         }
     });
 }
@@ -93,10 +110,14 @@ export default defineBackground(() => {
         }
 
         if (message?.type === HOLDINGS_MESSAGE) {
-            const { holdings } = message as HoldingsMessage;
+            const { holdings, coinIds } = message as HoldingsMessage;
 
             if (holdings && typeof holdings === 'object') {
                 holdingsItem.setValue(holdings);
+            }
+
+            if (coinIds && typeof coinIds === 'object') {
+                coinIdsItem.setValue(coinIds);
             }
 
             return false;
@@ -122,6 +143,11 @@ export default defineBackground(() => {
             return true;
         }
 
+        if (message?.type === FAVORITE_TOGGLE_MESSAGE) {
+            toggleFavoriteCoin(String((message as FavoriteToggleMessage).symbol ?? '')).then(sendResponse);
+            return true;
+        }
+
         return false;
     });
 
@@ -137,5 +163,7 @@ export default defineBackground(() => {
         scheduleCheck();
         notifyCmcTabs();
     });
+    // Other open CMC tabs pick up stars set in this one.
+    favoritesItem.watch(() => notifyCmcTabs(FAVORITES_CHANGED_MESSAGE));
     scheduleCheck();
 });

@@ -18,6 +18,20 @@ export const PAGE_SETTINGS_MESSAGE = 'cmc-helper:page-settings';
 export interface PageSettings {
     excludedPortfolios: string[];
     portfolioExchanges: Record<string, string>;
+    portfolioLogos: boolean;
+    /** The "To buy" list: lower-case symbols. */
+    favorites: string[];
+}
+
+/** Worker → CMC tabs: the "To buy" list changed (only the stars re-render; totals stay cached). */
+export const FAVORITES_CHANGED_MESSAGE = 'cmc-helper:favorites-changed';
+
+/** Content script → worker: mark or unmark a coin for the "To buy" list; answered with the new list. */
+export const FAVORITE_TOGGLE_MESSAGE = 'cmc-helper:favorite-toggle';
+
+export interface FavoriteToggleMessage {
+    type: typeof FAVORITE_TOGGLE_MESSAGE;
+    symbol: string;
 }
 
 /** Worker → CMC tabs: settings changed, re-render what depends on them. */
@@ -50,8 +64,10 @@ export const HOLDINGS_MESSAGE = 'cmc-helper:holdings';
 
 export interface HoldingsMessage {
     type: typeof HOLDINGS_MESSAGE;
-    /** Lower-case symbol -> positions (portfolio name, USD value). */
-    holdings: Record<string, { portfolio: string; value: number; balance?: number }[]>;
+    /** Lower-case symbol -> positions (portfolio name, USD value, amount, what it cost). */
+    holdings: Record<string, { portfolio: string; value: number; balance?: number; cost?: number }[]>;
+    /** Lower-case symbol -> CMC coin id (for prices in the worker). */
+    coinIds?: Record<string, number>;
 }
 
 /** Content script (CMC) → worker: exchange rates, from the worker's cache or loaded now (SerializedRates). */

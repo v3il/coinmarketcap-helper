@@ -10,7 +10,9 @@ import {
     type BestRate, type CheckStatus, type CoinSnapshot
 } from './storage';
 import { refreshBingx } from './bingxRefresh';
+import { findNewExchanges, keepMissing, withoutExchanges } from './newExchanges';
 import { isDigestDue, sendDigest, usd } from './digest';
+import { runJumpCheck } from './jumpCheck';
 import { escapeHtml, sendMessage } from './telegram';
 
 /** A short fixed-term offer (promo) worth a look: announced once, again only if its APR goes up. */
@@ -34,6 +36,9 @@ interface Alert {
     positions: string[];
 }
 
+/** Exchanges whose rates come from several sources that can fail one by one (Native staking: one per network). */
+const PARTIAL_EXCHANGES = new Set(['wallet']);
+
 /** On equal APR, the shorter term is better. */
 const isBetter = (a: Rate, b: Rate | null) => !b || a.apr > b.apr || (a.apr === b.apr && a.days < b.days);
 
@@ -49,8 +54,10 @@ const term = (days: number, unbondingDays?: number) => {
 };
 
 /** "7.37% · Binance · flexible", "6.50% · Ready · flexible, 7-day withdrawal" */
-const describe = ({ apr, days, unbondingDays, exchangeName }: BestRate) => (
-    `${apr.toFixed(2)}% · ${escapeHtml(exchangeName)} · ${term(days, unbondingDays)}`
+export const describeRate = ({
+    apr, days, unbondingDays, approximate, exchangeName
+}: BestRate) => (
+    `${approximate ? '≈' : ''}${apr.toFixed(2)}% · ${escapeHtml(exchangeName)} · ${term(days, unbondingDays)}`
 );
 
 /**
@@ -97,8 +104,8 @@ function describePositions(
  */
 const formatAlert = ({ symbol, best, previous, heldOn, positions }: Alert) => [
     `🪙 <b>${escapeHtml(symbol.toUpperCase())}</b>`,
-    `🔥 <b>${describe(best)}</b>`,
-    `↗️ +${(best.apr - previous.apr).toFixed(2)} pp <i>(was ${describe(previous)})</i>`,
+    `🔥 <b>${describeRate(best)}</b>`,
+    `↗️ +${(best.apr - previous.apr).toFixed(2)} pp <i>(was ${describeRate(previous)})</i>`,
     ...(heldOn.length > 0 ? [`📍 Now on: ${heldOn.map(escapeHtml).join(', ')}`] : []),
     ...positions
 ].join('\n');
@@ -219,13 +226,18 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
     const next: Record<string, CoinSnapshot> = {};
     const alerts: Alert[] = [];
 
+    const placesOfCoin = (symbol: string) => withoutExcluded(holdings[symbol] ?? [], settings.excludedPortfolios);
+    const balanceOf = (places: ReturnType<typeof placesOfCoin>) => (
+        places.length > 0 && places.every((place) => place.balance !== undefined)
+            ? places.reduce((sum, place) => sum + (place.balance ?? 0), 0)
+            : null
+    );
+    const snapshots: Record<string, CoinSnapshot> = {};
+
     symbols.forEach((symbol) => {
         const old = previous[symbol] ?? {};
         const snapshot: CoinSnapshot = {};
-        const places = withoutExcluded(holdings[symbol] ?? [], settings.excludedPortfolios);
-        const balance = places.length > 0 && places.every((place) => place.balance !== undefined)
-            ? places.reduce((sum, place) => sum + (place.balance ?? 0), 0)
-            : null;
+        const balance = balanceOf(placesOfCoin(symbol));
 
         (byCoin.get(symbol) ?? []).forEach(({ exchange, rates }) => {
             // Short promos (MEXC 2 days at 600%) aren't rates you can keep coins at: they get their own alerts.
@@ -246,6 +258,18 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
                 snapshot[id] = old[id];
             }
         });
+
+        snapshots[symbol] = keepMissing(snapshot, old, PARTIAL_EXCHANGES);
+    });
+
+    // An exchange added in an update starts with a silent baseline: no burst of "new best rate" alerts for it.
+    const newExchanges = findNewExchanges(previous, snapshots);
+
+    symbols.forEach((symbol) => {
+        const old = previous[symbol] ?? {};
+        const snapshot = snapshots[symbol];
+        const places = placesOfCoin(symbol);
+        const balance = balanceOf(places);
 
         // Coins kept just to watch the price (a coin or two), or not held at all any more (still in the list of
         // seen coins, but in no portfolio): baselines move on, but no alerts. Before CMC has reported any positions
@@ -275,7 +299,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
             }
         });
 
-        const best = bestOf(snapshot);
+        const best = bestOf(withoutExchanges(snapshot, newExchanges));
         const previousBest = bestOf(old);
 
         // New coins only get a baseline; alerts are for increases.
@@ -290,7 +314,7 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
             }
         }
 
-        if (best) {
+        if (bestOf(snapshot)) {
             next[symbol] = snapshot;
         }
     });
@@ -336,6 +360,18 @@ async function runCheck(): Promise<Omit<CheckStatus, 'at'>> {
 
     await knownRatesItem.setValue(next);
     await knownPromosItem.setValue(nextPromos);
+
+    // Price jumps of held coins, however small (lottery coins); one message for all of them.
+    const jumpCheck = await runJumpCheck(settings, holdings);
+
+    if (jumpCheck.ok) {
+        message += jumpCheck.jumps > 0 ? `, price jumps: ${jumpCheck.jumps}` : '';
+        message += jumpCheck.drops > 0 ? `, price drops: ${jumpCheck.drops}` : '';
+        message += jumpCheck.warning ? ` (${jumpCheck.warning})` : '';
+    } else if (ok) {
+        ok = false;
+        message = jumpCheck.error;
+    }
 
     // The weekly summary goes with the first check after its time; if Telegram fails, the next check retries.
     if (ok && await isDigestDue(settings)) {

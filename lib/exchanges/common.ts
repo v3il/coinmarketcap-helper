@@ -10,6 +10,10 @@ export interface Rate {
      * `apr` is then the rate of the first tier.
      */
     tiers?: RateTier[];
+    /** An estimate rather than the exact rate you get (network staking rates, after a typical validator fee). */
+    approximate?: boolean;
+    /** Shown in the rate's tooltip (e.g. why a figure is unusually high). */
+    note?: string;
 }
 
 export interface RateTier {

@@ -197,25 +197,30 @@ const describeTiers = (tiers: NonNullable<Rate['tiers']>) => tiers
         : `${apr.toFixed(2)}% from ${from.toLocaleString('en-US')} to ${to.toLocaleString('en-US')}`))
     .join(', ');
 
-function createTip({ apr, days, unbondingDays, tiers }: Rate, bestFixed: number) {
-    const flexible = days === 0;
+/** The rate's label ("∞: ≈4.70%") and tooltip. */
+export function tipContent({ apr, days, unbondingDays, tiers, approximate, note }: Rate) {
+    const notes = [
+        unbondingDays ? `No lock-up; withdrawal takes ${unbondingDays} days after unstaking` : '',
+        tiers ? `Depends on the amount: ${describeTiers(tiers)}` : '',
+        approximate ? 'Network rate after a typical 10% validator fee; the fee of your validator may differ' : '',
+        note ?? ''
+    ];
+
+    return {
+        text: `${term(days)}: ${approximate ? '≈' : ''}${apr.toFixed(2)}%`,
+        title: notes.filter(Boolean).join('\n')
+    };
+}
+
+function createTip(rate: Rate, bestFixed: number) {
     const classes = ['cmc-helper-earn__tip'];
 
-    if (flexible) {
+    if (rate.days === 0) {
         classes.push('cmc-helper-earn__tip--infinite');
-    } else if (apr === bestFixed) {
+    } else if (rate.apr === bestFixed) {
         classes.push('cmc-helper-earn__tip--best-fixed');
     }
 
-    const notes = [
-        unbondingDays ? `No lock-up; withdrawal takes ${unbondingDays} days after unstaking` : '',
-        tiers ? `Depends on the amount: ${describeTiers(tiers)}` : ''
-    ];
-    const title = notes.filter(Boolean).join('\n');
-
-    return h(
-        'span',
-        { class: classes.join(' '), ...(title ? { title } : {}) },
-        `${term(days)}: ${apr.toFixed(2)}%`
-    );
+    const { text, title } = tipContent(rate);
+    return h('span', { class: classes.join(' '), ...(title ? { title } : {}) }, text);
 }

@@ -2,7 +2,8 @@ import type { HoldingsByCoin } from '@/lib/holdings';
 
 // CoinMarketCap's own portfolio API, called with the user's session exactly like the CMC page does:
 // session cookies (same-site) plus the x-csrf-token header that CMC keeps in a readable cookie.
-// Runs in the content script only; nothing from here is sent to the extension's background or anywhere else.
+// Runs in the content script only. Positions (and what they cost) go to the extension's own local storage for
+// personal Telegram alerts; nothing is sent anywhere else.
 
 const API = 'https://api.coinmarketcap.com';
 const USD_ID = 2781;
@@ -12,6 +13,8 @@ export interface PortfolioInfo {
     name: string;
     /** Whether CMC includes this portfolio in the overall total. */
     counted: boolean;
+    /** 'manual' for portfolios with transactions; others (connected wallets/exchanges) have no P/L per coin. */
+    type: string;
 }
 
 export interface PortfolioTotals {
@@ -71,7 +74,8 @@ async function post<T>(path: string, body: object): Promise<T> {
 }
 
 export async function fetchPortfolios(): Promise<PortfolioInfo[]> {
-    const data = await post<{ portfolioSourceId?: string; portfolioName: string; beCounted?: boolean }[]>(
+    type Item = { portfolioSourceId?: string; portfolioName: string; beCounted?: boolean; portfolioType?: string };
+    const data = await post<Item[]>(
         '/asset/v4/portfolio/group/queryAll',
         { convertCryptoId: USD_ID }
     );
@@ -79,7 +83,12 @@ export async function fetchPortfolios(): Promise<PortfolioInfo[]> {
     // The first entry is the "Overview" pseudo-portfolio without an id.
     return data
         .filter((item) => item.portfolioSourceId)
-        .map((item) => ({ id: item.portfolioSourceId!, name: item.portfolioName, counted: item.beCounted !== false }));
+        .map((item) => ({
+            id: item.portfolioSourceId!,
+            name: item.portfolioName,
+            counted: item.beCounted !== false,
+            type: item.portfolioType ?? ''
+        }));
 }
 
 export interface CoinInfo {
@@ -94,6 +103,8 @@ export interface PortfolioSnapshot {
     holdings: HoldingsByCoin;
     /** Lower-case symbol -> CMC id and price. */
     coins: Map<string, CoinInfo>;
+    /** Lower-case symbol -> every portfolio listed for it, in CMC's order (as the overview's avatars stack). */
+    portfolioOrder: Map<string, string[]>;
 }
 
 /** Every coin across all portfolios: where it's held, how much, and its current price. */
@@ -105,10 +116,12 @@ export async function fetchPortfolioSnapshot(): Promise<PortfolioSnapshot> {
     const data = await post<{ list: Item[] }>('/asset/v3/portfolio/dashboard/query-summary', {});
     const holdings: HoldingsByCoin = new Map();
     const coins = new Map<string, CoinInfo>();
+    const portfolioOrder = new Map<string, string[]>();
 
     data.list.forEach(({ symbol, cryptocurrencyId, currentPrice, subItems }) => {
         const key = symbol.toLowerCase();
         coins.set(key, { id: cryptocurrencyId, price: Number(currentPrice) || 0 });
+        portfolioOrder.set(key, (subItems ?? []).map((item) => item.portfolioName));
 
         const places = (subItems ?? [])
             .map((item) => ({
@@ -124,7 +137,7 @@ export async function fetchPortfolioSnapshot(): Promise<PortfolioSnapshot> {
         }
     });
 
-    return { holdings, coins };
+    return { holdings, coins, portfolioOrder };
 }
 
 export interface NewTransaction {
@@ -172,4 +185,49 @@ export function sumTotals(list: PortfolioTotals[]): PortfolioTotals {
         value: sum.value + item.value,
         pl: sum.pl + item.pl
     }), { invested: 0, value: 0, pl: 0 });
+}
+
+/** Lower-case symbol -> portfolio name -> what the position cost (value − CMC's P/L for it), USD. */
+export type PositionCosts = Map<string, Map<string, number>>;
+
+const COSTS_PAGE_SIZE = 100;
+
+/** What each position cost, from CMC's per-portfolio holdings list (manual portfolios only). */
+export async function fetchPositionCosts(portfolios: PortfolioInfo[]): Promise<PositionCosts> {
+    type Coin = { symbol: string; cryptoHoldings: number | string; plValue: number | string };
+    type Page = { manualSummary?: { totalNum?: number; list?: Coin[] }[] };
+    const costs: PositionCosts = new Map();
+
+    const loadPortfolio = async ({ id, name }: PortfolioInfo) => {
+        for (let page = 1; ; page++) {
+            const data = await post<Page>('/asset/v3/portfolio/query-summary', {
+                portfolioSourceId: id,
+                portfolioType: 'manual',
+                cryptoUnit: USD_ID,
+                currentPage: page,
+                pageSize: COSTS_PAGE_SIZE
+            });
+            const summary = data.manualSummary?.[0];
+            const list = summary?.list ?? [];
+
+            list.forEach(({ symbol, cryptoHoldings, plValue }) => {
+                const value = Number(cryptoHoldings);
+                const pl = Number(plValue);
+
+                if (Number.isFinite(value) && Number.isFinite(pl)) {
+                    const key = symbol.toLowerCase();
+                    const byPortfolio = costs.get(key) ?? new Map<string, number>();
+                    byPortfolio.set(name, value - pl);
+                    costs.set(key, byPortfolio);
+                }
+            });
+
+            if (list.length < COSTS_PAGE_SIZE || page * COSTS_PAGE_SIZE >= (summary?.totalNum ?? 0)) {
+                return;
+            }
+        }
+    };
+
+    await Promise.all(portfolios.filter(({ type }) => type === 'manual').map(loadPortfolio));
+    return costs;
 }
