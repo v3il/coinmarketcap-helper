@@ -18,8 +18,11 @@ export interface BuyListOptions {
     onToggle: (symbol: string) => void;
 }
 
-/** Show only marked coins; kept while the tab is open (also across portfolios). */
+/** The user's choice to show only marked coins; kept while the tab is open (also across portfolios). */
 let filterOn = false;
+
+/** A table with nothing marked (or still loading) shows everything, but the choice stays for the next table. */
+export const filterApplied = (on: boolean, count: number) => on && count > 0;
 
 const stopEvents = (el: HTMLElement) => ['mousedown', 'pointerdown'].forEach((type) => {
     el.addEventListener(type, (event) => event.stopPropagation());
@@ -89,7 +92,7 @@ function renderBar(table: HTMLElement, count: number) {
             filterOn = !filterOn;
             // Apply right away (CMC may have replaced the table since the bar was made: look it up again).
             const current = document.querySelector<HTMLElement>(TABLE_SELECTOR);
-            current?.classList.toggle(FILTER_CLASS, filterOn);
+            current?.classList.toggle(FILTER_CLASS, filterApplied(filterOn, Number(button.dataset.count)));
 
             if (current) {
                 renderBar(current, Number(button.dataset.count));
@@ -101,7 +104,8 @@ function renderBar(table: HTMLElement, count: number) {
 
     const button = bar.querySelector<HTMLButtonElement>('button')!;
     const text = `★ To buy (${count})`;
-    const state = `${count}|${filterOn}`;
+    const applied = filterApplied(filterOn, count);
+    const state = `${count}|${applied}`;
 
     if (button.dataset.state === state) {
         return;
@@ -111,8 +115,8 @@ function renderBar(table: HTMLElement, count: number) {
     button.dataset.count = String(count);
     button.textContent = text;
     button.disabled = count === 0;
-    button.setAttribute('aria-pressed', String(filterOn));
-    button.title = filterOn ? 'Show all coins' : 'Show only the coins marked to buy';
+    button.setAttribute('aria-pressed', String(applied));
+    button.title = applied ? 'Show all coins' : 'Show only the coins marked to buy';
 }
 
 export function renderBuyList({ favorites, onToggle }: BuyListOptions) {
@@ -141,13 +145,10 @@ export function renderBuyList({ favorites, onToggle }: BuyListOptions) {
         }
     });
 
-    // Nothing marked here: never leave an empty table behind.
-    if (count === 0) {
-        filterOn = false;
-    }
+    const applied = filterApplied(filterOn, count);
 
-    if (table.classList.contains(FILTER_CLASS) !== filterOn) {
-        table.classList.toggle(FILTER_CLASS, filterOn);
+    if (table.classList.contains(FILTER_CLASS) !== applied) {
+        table.classList.toggle(FILTER_CLASS, applied);
     }
 
     renderBar(table, count);
