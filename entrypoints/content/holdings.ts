@@ -18,6 +18,8 @@ export function loadHoldings(): Promise<PortfolioSnapshot | null> {
     }
 
     const entry = { at: Date.now(), ttl: CACHE_TTL_MS, promise: Promise.resolve<PortfolioSnapshot | null>(null) };
+    // Fresh coin amounts need fresh costs: the average price calculator divides one by the other.
+    costsCache = null;
 
     entry.promise = fetchPortfolioSnapshot().catch((error) => {
         console.warn('[cmc-helper] Failed to load holdings', error);
@@ -37,20 +39,23 @@ export function invalidateHoldings() {
 
 /** Costs change only with transactions: a longer cache, one request per portfolio. */
 const COSTS_TTL_MS = 10 * 60 * 1000;
-let costsCache: { at: number; promise: Promise<PositionCosts> } | null = null;
+let costsCache: { at: number; ttl: number; promise: Promise<PositionCosts> } | null = null;
 
 /** What each position cost (for the P/L % in price-jump alerts); empty when CMC doesn't answer. */
 export function loadPositionCosts(): Promise<PositionCosts> {
-    if (costsCache && Date.now() - costsCache.at < COSTS_TTL_MS) {
+    if (costsCache && Date.now() - costsCache.at < costsCache.ttl) {
         return costsCache.promise;
     }
 
-    const promise = fetchPortfolios().then(fetchPositionCosts).catch((error) => {
+    const entry = { at: Date.now(), ttl: COSTS_TTL_MS, promise: Promise.resolve<PositionCosts>(new Map()) };
+
+    // On failure keep the empty result for a while: every new load re-renders the page, which would load again.
+    entry.promise = fetchPortfolios().then(fetchPositionCosts).catch((error) => {
         console.warn('[cmc-helper] Failed to load position costs', error);
-        costsCache = null;
+        entry.ttl = RETRY_AFTER_MS;
         return new Map() as PositionCosts;
     });
 
-    costsCache = { at: Date.now(), promise };
-    return promise;
+    costsCache = entry;
+    return entry.promise;
 }

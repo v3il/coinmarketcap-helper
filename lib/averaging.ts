@@ -28,9 +28,15 @@ export function afterBuy({ coins, cost }: Position, price: number, usd: number):
     return { coins: coins + usd / price, cost: cost + usd };
 }
 
-/** "1,000", " $250 ", "12.5" → a positive number of dollars; null for anything else. */
+/**
+ * "1,000", " $250 ", "12.5" → a positive number of dollars; null for anything else. Commas in thousands groups
+ * ("1,000.5") separate thousands; any other single comma ("12,5") is the decimal point.
+ */
 export function parseUsd(text: string): number | null {
-    const clean = text.replace(/[\s_$,]/g, '');
+    const trimmed = text.replace(/[\s_$]/g, '');
+    const clean = /^\d{1,3}(,\d{3})+(\.\d+)?$/.test(trimmed)
+        ? trimmed.replace(/,/g, '')
+        : trimmed.replace(/^(\d+),(\d+)$/, '$1.$2');
 
     if (!/^\d+(\.\d+)?$/.test(clean)) {
         return null;

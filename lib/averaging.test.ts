@@ -37,6 +37,12 @@ describe('parseUsd', () => {
         expect(parseUsd(' $250 ')).toBe(250);
     });
 
+    it('reads a lone comma as the decimal point', () => {
+        expect(parseUsd('12,5')).toBe(12.5);
+        expect(parseUsd('1,50')).toBe(1.5);
+        expect(parseUsd('1,000.5')).toBe(1000.5);
+    });
+
     it('rejects empty, zero, negative and malformed input', () => {
         ['', '0', '-5', 'abc', '1.2.3'].forEach((text) => expect(parseUsd(text)).toBeNull());
     });
