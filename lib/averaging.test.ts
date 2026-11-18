@@ -58,14 +58,15 @@ describe('formatChange', () => {
 
 describe('formatPrice', () => {
     it('uses cents from $1 and four significant digits below', () => {
-        expect(formatPrice(1234.5)).toBe('1234.50');
+        expect(formatPrice(1234.5)).toBe('1,234.50');
         expect(formatPrice(0.012345)).toBe('0.01235');
     });
 });
 
 describe('formatCoins', () => {
     it('keeps two decimals from 1 coin, four significant digits below, no trailing zeros', () => {
-        expect(formatCoins(1234.5678)).toBe('1234.57');
+        expect(formatCoins(1234.5678)).toBe('1,234.57');
+        expect(formatCoins(2500000)).toBe('2,500,000');
         expect(formatCoins(20)).toBe('20');
         expect(formatCoins(12.5)).toBe('12.5');
         expect(formatCoins(0.012345)).toBe('0.01235');

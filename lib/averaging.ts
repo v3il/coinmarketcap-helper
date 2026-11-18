@@ -46,10 +46,15 @@ export function parseUsd(text: string): number | null {
     return value > 0 ? value : null;
 }
 
-export const formatPrice = (value: number) => (value >= 1 ? value.toFixed(2) : value.toPrecision(4));
+/** 1234.5 → "1,234.50", 0.012345 → "0.01235". */
+export const formatPrice = (value: number) => (value >= 1
+    ? value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : value.toPrecision(4));
 
-/** 1234.5678 → "1234.57", 20 → "20", 0.012345 → "0.01235". */
-export const formatCoins = (value: number) => String(Number(value >= 1 ? value.toFixed(2) : value.toPrecision(4)));
+/** 1234.5678 → "1,234.57", 20 → "20", 0.012345 → "0.01235". */
+export const formatCoins = (value: number) => (value >= 1
+    ? value.toLocaleString('en-US', { maximumFractionDigits: 2 })
+    : String(Number(value.toPrecision(4))));
 
 /** −0.42 → "−42.0%", 0.1 → "+10.0%". */
 export function formatChange(change: number): string {
