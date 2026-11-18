@@ -19,6 +19,19 @@ export interface PageSettings {
     excludedPortfolios: string[];
     portfolioExchanges: Record<string, string>;
     portfolioLogos: boolean;
+    /** The "To buy" list: lower-case symbols. */
+    favorites: string[];
+}
+
+/** Worker → CMC tabs: the "To buy" list changed (only the stars re-render; totals stay cached). */
+export const FAVORITES_CHANGED_MESSAGE = 'cmc-helper:favorites-changed';
+
+/** Content script → worker: mark or unmark a coin for the "To buy" list; answered with the new list. */
+export const FAVORITE_TOGGLE_MESSAGE = 'cmc-helper:favorite-toggle';
+
+export interface FavoriteToggleMessage {
+    type: typeof FAVORITE_TOGGLE_MESSAGE;
+    symbol: string;
 }
 
 /** Worker → CMC tabs: settings changed, re-render what depends on them. */

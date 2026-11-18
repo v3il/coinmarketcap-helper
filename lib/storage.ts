@@ -85,6 +85,9 @@ export type CoinSnapshot = Record<string, BestRate>;
  */
 export const knownRatesItem = storage.defineItem<Record<string, CoinSnapshot>>('local:knownRates', { fallback: {} });
 
+/** The "To buy" list: lower-case symbols of coins the user would like to buy more of. */
+export const favoritesItem = storage.defineItem<string[]>('local:favorites', { fallback: [] });
+
 /** Names of the user's CMC portfolios, as last seen on coinmarketcap.com (for the settings page). */
 export const knownPortfoliosItem = storage.defineItem<string[]>('local:knownPortfolios', { fallback: [] });
 

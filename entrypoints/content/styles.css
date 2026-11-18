@@ -350,3 +350,67 @@ img.cmc-helper-logo {
     object-fit: contain;
     background: #fff;
 }
+
+/* "To buy" list: a star after the coin's symbol, a yellowish row, a filter above the table. */
+.cmc-helper-star {
+    margin: 0 0 0 6px;
+    padding: 0 2px;
+    border: none;
+    background: transparent;
+    color: #a6b0c3;
+    font-size: 14px;
+    line-height: 1;
+    vertical-align: middle;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+
+    &[aria-pressed="true"] {
+        color: #f0b90b;
+        opacity: 1;
+    }
+
+    &:hover {
+        color: #f0b90b;
+    }
+}
+
+tr:hover .cmc-helper-star,
+.cmc-helper-star:focus-visible {
+    opacity: 1;
+}
+
+tr.cmc-helper-to-buy > td {
+    background: rgba(240, 185, 11, 0.14) !important;
+}
+
+.cmc-helper-buy-filter tbody tr:not(.cmc-helper-to-buy) {
+    display: none;
+}
+
+.cmc-helper-buy-bar {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 0 8px;
+}
+
+.cmc-helper-buy-bar__button {
+    padding: 6px 12px;
+    border: 1px solid rgba(128, 138, 157, 0.4);
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font-size: 13px;
+    cursor: pointer;
+
+    &[aria-pressed="true"] {
+        border-color: #f0b90b;
+        background: rgba(240, 185, 11, 0.15);
+        color: #f0b90b;
+    }
+
+    &:disabled {
+        opacity: 0.4;
+        cursor: default;
+    }
+}

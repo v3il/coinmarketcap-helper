@@ -1,16 +1,20 @@
 import { exchangeResolver, withoutExcluded } from '@/lib/holdings';
 import { portfolioIcon } from '@/lib/portfolioIcons';
 import {
+    FAVORITE_TOGGLE_MESSAGE,
+    FAVORITES_CHANGED_MESSAGE,
     HOLDINGS_MESSAGE,
     PAGE_SETTINGS_CHANGED_MESSAGE,
     PORTFOLIO_MESSAGE,
     RATES_MESSAGE,
+    type FavoriteToggleMessage,
     type HoldingsMessage,
     type PageSettings,
     type PortfolioMessage
 } from '@/lib/messages';
 import { deserializeRates, type LoadedRates, type SerializedRates } from '@/lib/rates';
 import { renderAmountEditors } from './amountEditor';
+import { renderBuyList } from './buyList';
 import type { PortfolioSnapshot, PositionCosts } from './cmcApi';
 import { invalidateHoldings, loadHoldings, loadPositionCosts } from './holdings';
 import { invalidatePageSettings, loadPageSettings } from './pageSettings';
@@ -134,6 +138,10 @@ export function main() {
             renderAmountEditors({ snapshot, costs, hidden, onAdded: refreshAfterTransaction });
         }
 
+        if (settings) {
+            renderBuyList({ favorites: new Set(settings.favorites), onToggle: toggleFavorite });
+        }
+
         // Logos need the settings: a portfolio's exchange binding decides its logo (no guessing before they load).
         if (settings) {
             const resolveIcon = exchangeResolver(settings.portfolioExchanges);
@@ -169,6 +177,19 @@ export function main() {
             });
         }
     };
+
+    // Star clicked: the worker saves the list and answers with it; show it right away, without the notify round trip.
+    function toggleFavorite(symbol: string) {
+        const message: FavoriteToggleMessage = { type: FAVORITE_TOGGLE_MESSAGE, symbol };
+        chrome.runtime.sendMessage(message)
+            .then((favorites: string[] | undefined) => {
+                if (settings && Array.isArray(favorites)) {
+                    settings = { ...settings, favorites };
+                    scheduleUpdate();
+                }
+            })
+            .catch((error) => console.warn('[cmc-helper] Failed to save the To buy list', error));
+    }
 
     // A transaction was added: make CMC reload its current view, and reload our own data.
     function refreshAfterTransaction() {
@@ -220,6 +241,12 @@ export function main() {
         if (message?.type === PAGE_SETTINGS_CHANGED_MESSAGE) {
             invalidatePageSettings();
             invalidateTotals();
+            scheduleUpdate();
+        }
+
+        // The "To buy" list changed (maybe in another tab): reload it with the settings, nothing else.
+        if (message?.type === FAVORITES_CHANGED_MESSAGE) {
+            invalidatePageSettings();
             scheduleUpdate();
         }
     });

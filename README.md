@@ -43,6 +43,8 @@ It can also watch those rates in the background and message you in **Telegram** 
 - 🏷️ **Portfolio logos** — CMC's look-alike portfolio avatars are replaced with the logo of the exchange a portfolio
   is bound to, the wallet's logo (Phantom, Keplr, Leo, Telegram, Ready) or a generic wallet icon, in the sidebar and
   the overview table. Can be turned off in the settings.
+- ⭐ **To buy list** — the ☆ after a coin's symbol marks it as one you'd like to buy more of. Marked rows get a
+  yellowish highlight, and **★ To buy** above the table shows only them. Kept in the extension, tickers only.
 - 🔔 **Telegram alerts** — a message when the best rate for one of your coins goes up, a short high-rate promo
   shows up or a coin's price jumps, plus a weekly summary of the best moves.
 - 🚀 **Fast** — rates are cached by the extension for 30 minutes, so the portfolio page doesn't wait for every
