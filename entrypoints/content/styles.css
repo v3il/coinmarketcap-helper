@@ -68,7 +68,7 @@
 .cmc-helper-editable {
     position: relative;
     /* Room for the small "+" after the amount; only the width changes, never the row height. */
-    padding-right: 30px !important;
+    padding-right: 34px !important;
 }
 
 /* Small "+" right after the amount (Holdings / Balance), vertically centered. */
@@ -80,8 +80,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
     margin: 0;
     padding: 0;
     border: 1px solid rgba(128, 138, 157, 0.5);
@@ -100,7 +100,7 @@
         position: absolute;
         top: 50%;
         left: 50%;
-        width: 8px;
+        width: 10px;
         height: 1.5px;
         border-radius: 1px;
         background: currentColor;
@@ -123,25 +123,25 @@
 
 /* Average price calculator: a 🧮 left of the "+", same size and behaviour. */
 .cmc-helper-editable:has(.cmc-helper-calc) {
-    padding-right: 52px !important;
+    padding-right: 62px !important;
 }
 
 .cmc-helper-calc {
     position: absolute;
     top: 50%;
-    right: 28px;
+    right: 32px;
     transform: translateY(-50%);
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
     margin: 0;
     padding: 0;
     border: 1px solid rgba(128, 138, 157, 0.5);
     border-radius: 50%;
     background: transparent;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1;
     cursor: pointer;
     opacity: 0.45;
