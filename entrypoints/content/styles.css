@@ -351,18 +351,18 @@ img.cmc-helper-logo {
     background: #fff;
 }
 
-/* "To buy" list: a star after the coin's symbol, a yellowish row, a filter above the table. */
+/* "To buy" list: a star before the coin's logo, a yellowish row, a filter above the table. */
 .cmc-helper-star {
-    margin: 0 0 0 6px;
+    flex: none;
+    margin: 0 8px 0 0;
     padding: 0 2px;
     border: none;
     background: transparent;
     color: #a6b0c3;
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1;
-    vertical-align: middle;
     cursor: pointer;
-    opacity: 0;
+    opacity: 0.5;
     transition: opacity 0.15s, color 0.15s;
 
     &[aria-pressed="true"] {
@@ -372,12 +372,13 @@ img.cmc-helper-logo {
 
     &:hover {
         color: #f0b90b;
+        opacity: 1;
     }
 }
 
-tr:hover .cmc-helper-star,
-.cmc-helper-star:focus-visible {
-    opacity: 1;
+/* CMC spaces the logo from the name only while the logo is the cell's first child; keep that with the star first. */
+.cmc-helper-star + img {
+    margin-right: 8px !important;
 }
 
 tr.cmc-helper-to-buy > td {

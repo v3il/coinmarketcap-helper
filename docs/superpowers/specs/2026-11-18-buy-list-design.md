@@ -25,8 +25,8 @@ Pairs with the 🧮 calculator: pick a marked coin, see what buying would do.
 
 - **Where:** the overview table and single-portfolio tables (`TABLE_SELECTOR`). The mark is per coin (lower-case
   symbol), not per portfolio.
-- **Star:** a small button right after the coin's symbol (`.symbol-name` / `.coin-item-symbol`). ☆ unmarked (dim, shown
-  on row hover), ★ marked (yellow, always shown). Click toggles; it never opens CMC's coin page (stop propagation, like
+- **Star:** a small button first in the coin's cell, before its logo (owner's call after the first try). ☆ unmarked
+  (dim, always shown), ★ marked (yellow). Click toggles; it never opens CMC's coin page (stop propagation, like
   Set amount).
 - **Highlight:** marked rows get a soft yellow background (`rgba(240, 185, 11, 0.14)`-ish).
 - **Filter:** a small toolbar inserted right before the table wrapper with a toggle button "★ To buy (N)". On: rows

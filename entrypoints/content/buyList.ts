@@ -1,7 +1,7 @@
 import { h } from './dom';
 import { TABLE_SELECTOR } from './render';
 
-// The "To buy" list: a ☆/★ after each coin's symbol marks the coins the owner would like to buy more of; marked rows
+// The "To buy" list: a ☆/★ before each coin's logo marks the coins the owner would like to buy more of; marked rows
 // are highlighted, and "★ To buy (N)" above the table hides the rest. Renders are idempotent (the update loop re-runs
 // on every DOM change).
 
@@ -25,9 +25,25 @@ const stopEvents = (el: HTMLElement) => ['mousedown', 'pointerdown'].forEach((ty
     el.addEventListener(type, (event) => event.stopPropagation());
 });
 
+/** The star goes first in the coin's cell: before its logo, or before the name block when there's no logo. */
+function starAnchor(symbolEl: Element): Element | null {
+    const cell = symbolEl.closest('td');
+    return cell?.querySelector(`img:not(.${STAR_CLASS})`) ?? symbolEl.parentElement;
+}
+
 function renderStar(symbolEl: Element, symbol: string, marked: boolean, onToggle: BuyListOptions['onToggle']) {
     const key = `${symbol}|${marked}`;
-    const existing = symbolEl.parentElement?.querySelector<HTMLButtonElement>(`:scope > .${STAR_CLASS}`);
+    const anchor = starAnchor(symbolEl);
+    const existing = symbolEl.closest('td')?.querySelector<HTMLButtonElement>(`.${STAR_CLASS}`);
+
+    if (!anchor) {
+        return;
+    }
+
+    // Already in place and up to date (CMC may re-render the cell and drop our star: then it's rebuilt).
+    if (existing?.dataset.key === key && existing.nextElementSibling === anchor) {
+        return;
+    }
 
     if (existing?.dataset.key === key) {
         return;
@@ -53,7 +69,7 @@ function renderStar(symbolEl: Element, symbol: string, marked: boolean, onToggle
         onToggle(symbol);
     });
     stopEvents(star);
-    symbolEl.after(star);
+    anchor.before(star);
 }
 
 function renderBar(table: HTMLElement, count: number) {
